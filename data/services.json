@@ -1,0 +1,123 @@
+[
+  {
+    "slug": "full-stack-web-development",
+    "number": "01",
+    "title": "Full-Stack Web Development",
+    "short": "Applications with architecture you can keep building on.",
+    "description": "Modern web applications built with thoughtful architecture, responsive interfaces, and reliable functionality.",
+    "accent": "cyan",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Frontend development",
+          "Backend and API integration",
+          "Responsive interfaces",
+          "Database integration where appropriate",
+          "Performance optimization"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "wordpress-development",
+    "number": "02",
+    "title": "WordPress Development",
+    "short": "Professional sites shaped around your brand and customers.",
+    "description": "Professional WordPress websites tailored to your brand, customers, and business objectives.",
+    "accent": "turquoise",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Business websites",
+          "Landing pages",
+          "Elementor development",
+          "E-commerce websites",
+          "Website redesigns",
+          "Speed and usability improvements"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "shopify-development",
+    "number": "03",
+    "title": "Shopify Development",
+    "short": "Storefronts that make discovery and purchasing easier.",
+    "description": "Customer-focused Shopify storefronts that make product discovery and purchasing easier.",
+    "accent": "mist",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Store setup and customization",
+          "Theme customization",
+          "Product and collection pages",
+          "Mobile shopping experiences",
+          "Storefront improvements"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "meta-ads-marketing",
+    "number": "04",
+    "title": "Meta Ads Marketing",
+    "short": "Campaigns built for structured testing and honest measurement.",
+    "description": "Performance-oriented advertising campaigns supported by structured testing and meaningful measurement.",
+    "accent": "cyan",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Campaign setup",
+          "Campaign structure",
+          "Creative testing plans",
+          "Pixel and event configuration",
+          "Performance monitoring"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "server-side-tracking",
+    "number": "05",
+    "title": "Server-Side Tracking & Conversion API",
+    "short": "Measurement infrastructure that holds up under scrutiny.",
+    "description": "Better conversion measurement through carefully configured tracking infrastructure.",
+    "accent": "turquoise",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Meta Pixel integration",
+          "Facebook Conversion API",
+          "Browser/server event deduplication",
+          "Event validation",
+          "GA4 integration where appropriate",
+          "Tracking diagnostics"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "ecommerce-growth-solutions",
+    "number": "06",
+    "title": "E-commerce Growth Solutions",
+    "short": "One connected system instead of three disconnected vendors.",
+    "description": "Connect website development, advertising, and measurement into a more coherent growth system — a coordinated solution for businesses that need multiple services working together.",
+    "accent": "mist",
+    "deliverables": [
+      {
+        "title": "Scope",
+        "items": [
+          "Storefront and funnel development",
+          "Campaign structure and creative testing",
+          "Conversion tracking and analytics",
+          "Ongoing measurement review"
+        ]
+      }
+    ]
+  }
+]

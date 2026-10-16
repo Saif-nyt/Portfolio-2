@@ -1,0 +1,27 @@
+[
+  {
+    "number": "01",
+    "title": "Discover",
+    "body": "Understand the business, customers, requirements, and goals before anything is designed or built."
+  },
+  {
+    "number": "02",
+    "title": "Strategize",
+    "body": "Plan the architecture, user journey, design direction, and measurement needs as one connected brief."
+  },
+  {
+    "number": "03",
+    "title": "Build",
+    "body": "Implement the website, interfaces, and integrations in reviewable stages rather than one silent stretch of work."
+  },
+  {
+    "number": "04",
+    "title": "Validate",
+    "body": "Test functionality, responsive behaviour, accessibility, performance, and tracking against the brief."
+  },
+  {
+    "number": "05",
+    "title": "Launch & Improve",
+    "body": "Deploy the solution, confirm measurement, and identify practical opportunities for improvement."
+  }
+]

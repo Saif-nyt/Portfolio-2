@@ -1,26 +1,1192 @@
 @import "tailwindcss";
 
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* ------------------------------------------------------------------
+   Pandora palette — literal brand colors (theme independent)
+------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --abyss: #07110f;
+  --midnight: #0b1b19;
+  --jungle: #102c28;
+  --forest-teal: #16463f;
+  --cyan: #63f5e7;
+  --turquoise: #37d6c5;
+  --mist: #a3d9d6;
+  --chalk: #f2f5ef;
+  --body-ink: #a8b9b2;
+  --hairline: rgba(163, 217, 214, 0.16);
+
+  --font-space: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-editorial: "Newsreader", ui-serif, Georgia, serif;
+}
+
+/* ------------------------------------------------------------------
+   Semantic tokens — DARK (primary)
+------------------------------------------------------------------- */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #07110f;
+  --bg-deep: #050c0b;
+  --panel: rgba(16, 44, 40, 0.55);
+  --panel-solid: #0b1b19;
+  --panel-strong: rgba(22, 70, 63, 0.4);
+  --ink: #f2f5ef;
+  --ink-dim: #a8b9b2;
+  --ink-faint: rgba(168, 185, 178, 0.72);
+  --line: rgba(163, 217, 214, 0.16);
+  --line-strong: rgba(99, 245, 231, 0.4);
+  --accent: #63f5e7;
+  --accent-strong: #37d6c5;
+  --accent-ink: #04231f;
+  --accent-soft: rgba(99, 245, 231, 0.12);
+  --gold: #e6bf6a;
+  --glow-ring: 0 0 0 1px rgba(99, 245, 231, 0.35), 0 0 40px -12px rgba(99, 245, 231, 0.55);
+  --glow-soft: 0 0 60px -20px rgba(99, 245, 231, 0.45);
+  --shadow-card: 0 24px 60px -30px rgba(0, 0, 0, 0.9);
+  --veil: rgba(7, 17, 15, 0.72);
+  --selection: rgba(99, 245, 231, 0.28);
+}
+
+/* ------------------------------------------------------------------
+   Semantic tokens — LIGHT (misty ivory)
+------------------------------------------------------------------- */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f3ec;
+  --bg-deep: #ecebe2;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-solid: #fbfaf4;
+  --panel-strong: rgba(228, 236, 224, 0.9);
+  --ink: #10241f;
+  --ink-dim: #47605a;
+  --ink-faint: rgba(71, 96, 90, 0.85);
+  --line: rgba(16, 36, 31, 0.14);
+  --line-strong: rgba(12, 124, 112, 0.45);
+  --accent: #0c7c70;
+  --accent-strong: #0a655c;
+  --accent-ink: #f4f3ec;
+  --accent-soft: rgba(12, 124, 112, 0.1);
+  --glow-ring: 0 0 0 1px rgba(12, 124, 112, 0.35), 0 18px 40px -28px rgba(12, 124, 112, 0.5);
+  --glow-soft: 0 20px 50px -30px rgba(12, 124, 112, 0.45);
+  --shadow-card: 0 24px 50px -34px rgba(16, 36, 31, 0.45);
+  --veil: rgba(244, 243, 236, 0.78);
+  --selection: rgba(12, 124, 112, 0.2);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-abyss: var(--abyss);
+  --color-midnight: var(--midnight);
+  --color-jungle: var(--jungle);
+  --color-forestteal: var(--forest-teal);
+  --color-cyan: var(--cyan);
+  --color-turquoise: var(--turquoise);
+  --color-mist: var(--mist);
+  --color-chalk: var(--chalk);
+  --color-bodyink: var(--body-ink);
+
+  --color-bg: var(--bg);
+  --color-bgdeep: var(--bg-deep);
+  --color-panel: var(--panel);
+  --color-panelsolid: var(--panel-solid);
+  --color-panelstrong: var(--panel-strong);
+  --color-ink: var(--ink);
+  --color-dim: var(--ink-dim);
+  --color-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-linestrong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accentstrong: var(--accent-strong);
+  --color-accentink: var(--accent-ink);
+  --color-accentsoft: var(--accent-soft);
+
+  --font-display: var(--font-space);
+  --font-sans: var(--font-inter);
+  --font-editorial: var(--font-editorial);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(1100px 640px at 82% -10%, rgba(99, 245, 231, 0.09), transparent 62%),
+      radial-gradient(900px 620px at 4% 26%, rgba(22, 70, 63, 0.55), transparent 66%),
+      radial-gradient(1200px 900px at 55% 112%, rgba(16, 44, 40, 0.7), transparent 72%);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: var(--font-inter);
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  [data-theme="light"] body {
+    background-image:
+      radial-gradient(760px 520px at 86% -8%, rgba(255, 206, 140, 0.4), transparent 64%),
+      radial-gradient(1000px 600px at 84% -8%, rgba(12, 124, 112, 0.1), transparent 60%),
+      radial-gradient(900px 620px at 6% 24%, rgba(228, 236, 224, 0.9), transparent 66%),
+      radial-gradient(1200px 900px at 50% 112%, rgba(214, 226, 214, 0.75), transparent 72%);
+  }
+
+  ::selection {
+    background-color: var(--selection);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-space);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  .panel {
+    background-color: var(--panel);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: var(--shadow-card);
+  }
+
+  .hairline {
+    border: 1px solid var(--line);
+  }
+
+  .glow-ring {
+    box-shadow: var(--glow-ring);
+  }
+
+  .text-gradient {
+    background: linear-gradient(
+      100deg,
+      var(--ink) 0%,
+      var(--cyan) 55%,
+      var(--turquoise) 100%
+    );
+    background-size: 220% 100%;
+    animation: gradient-shimmer 8s ease-in-out infinite alternate;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  [data-theme="light"] .text-gradient {
+    background-image: linear-gradient(100deg, var(--ink) 0%, #0e8f81 52%, #0a655c 100%);
+  }
+
+  .eyebrow {
+    font-family: var(--font-space);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 3rem;
+    padding-inline: 1.6rem;
+    border-radius: 999px;
+    font-family: var(--font-space);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.3s ease,
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  .btn-primary {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(120deg, var(--cyan), var(--turquoise));
+    color: var(--accent-ink);
+    box-shadow: 0 18px 40px -22px rgba(99, 245, 231, 0.9);
+  }
+
+  .btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(
+      115deg,
+      transparent 32%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 68%
+    );
+    transform: translateX(-135%);
+    pointer-events: none;
+  }
+
+  .btn-primary:hover::after {
+    animation: sheen-sweep 0.75s ease forwards;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 24px 50px -20px rgba(99, 245, 231, 0.85);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    background-color: color-mix(in srgb, var(--panel-solid) 55%, transparent);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-hover {
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-6px);
+    border-color: var(--line-strong);
+    box-shadow: var(--glow-soft);
+  }
+
+  /* Light sweep across a card on hover (pair with .card-hover). */
+  .sheen {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 35%,
+      color-mix(in srgb, var(--accent) 16%, transparent) 50%,
+      transparent 65%
+    );
+    transform: translateX(-130%);
+    pointer-events: none;
+  }
+
+  .sheen:hover::after {
+    animation: sheen-sweep 0.9s ease forwards;
+  }
+
+  /* Reading-progress hairline pinned above the navbar. */
+  .scroll-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 3px;
+    z-index: 60;
+    background: linear-gradient(90deg, var(--accent-strong), var(--cyan), var(--turquoise));
+    background-size: 200% 100%;
+    animation: gradient-shimmer 6s ease-in-out infinite alternate;
+    transform-origin: 0% 50%;
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+
+  .skip-link {
+    position: fixed;
+    top: -100px;
+    left: 1rem;
+    z-index: 100;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    transition: top 0.2s ease;
+  }
+
+  .skip-link:focus-visible {
+    top: 1rem;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Ambient environment motion
+------------------------------------------------------------------- */
+@keyframes pandora-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(var(--drift-x, 2%), 0, 0);
+  }
+}
+
+@keyframes pandora-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: var(--p-o, 0.5);
+  }
+  50% {
+    transform: translate3d(0, -22px, 0) scale(1.12);
+    opacity: calc(var(--p-o, 0.5) + 0.25);
+  }
+}
+
+@keyframes pandora-pulse {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(99, 245, 231, 0.3));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+    filter: drop-shadow(0 0 18px rgba(99, 245, 231, 0.85));
+  }
+}
+
+@keyframes pandora-beam {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: rotate(var(--beam-r, 12deg)) scaleY(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: rotate(var(--beam-r, 12deg)) scaleY(1.06);
+  }
+}
+
+@keyframes scroll-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+}
+
+@keyframes marching-ants {
+  to {
+    stroke-dashoffset: -140;
+  }
+}
+
+@keyframes gradient-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pandora-sunrise {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(-2.5%, 3%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes line-grow {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sheen-sweep {
+  to {
+    transform: translateX(135%);
+  }
+}
+
+@keyframes gentle-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Spores/pollen: a slow rise that blinks twice per cycle — a soft,
+   organic twinkle rather than a hard on/off. */
+@keyframes pandora-twinkle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: calc(var(--p-o, 0.6) * 0.25);
+    filter: brightness(1);
+  }
+  25% {
+    transform: translate3d(var(--tw-x, 5px), -10px, 0) scale(1.2);
+    opacity: var(--p-o, 0.6);
+    filter: brightness(1.45);
+  }
+  50% {
+    transform: translate3d(0, -16px, 0) scale(1.02);
+    opacity: calc(var(--p-o, 0.6) * 0.45);
+    filter: brightness(1.05);
+  }
+  75% {
+    transform: translate3d(calc(var(--tw-x, 5px) * -1), -6px, 0) scale(1.24);
+    opacity: var(--p-o, 0.6);
+    filter: brightness(1.55);
+  }
+}
+
+/* Static UI dots: soft opacity blink with a gentle luminance surge.
+   Opacity/filter only, so it composes with any existing transform
+   (including rotated diamond markers). */
+@keyframes soft-blink {
+  0%,
+  100% {
+    opacity: 0.4;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+}
+
+/* Daylight beams read as warm sun shafts and glow *into* the ivory sky. */
+@keyframes pandora-beam-light {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: rotate(var(--beam-r, 12deg)) scaleY(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: rotate(var(--beam-r, 12deg)) scaleY(1.07);
+  }
+}
+
+/* Theme switch: a soft sunrise-style cross-fade between palettes. */
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: scale(1.012);
+  }
+}
+
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: scale(0.988);
+  }
+}
+
+/* ------------------------------------------------------------------
+   Game-feel: sparks, HUD dialogue, achievements, cursor wisp
+------------------------------------------------------------------- */
+@keyframes spark-fly {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--dx, 24px), var(--dy, -32px), 0) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  48% {
+    opacity: 1;
+  }
+  50%,
+  98% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes toast-in {
+  0% {
+    transform: translateY(140%) scale(0.92);
+    opacity: 0;
+  }
+  65% {
+    transform: translateY(-4%) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-out {
+  to {
+    transform: translateY(140%) scale(0.94);
+    opacity: 0;
+  }
+}
+
+@keyframes wisp-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+/* Fireflies: lazy wandering loops whose glow fades in and out along the
+   path — three variants so a card never moves in lockstep. */
+@keyframes firefly-wander {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  30% {
+    transform: translate3d(22px, -30px, 0);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate3d(52px, -10px, 0);
+    opacity: 0.95;
+  }
+  70% {
+    transform: translate3d(34px, 24px, 0);
+    opacity: 0.2;
+  }
+  90% {
+    transform: translate3d(6px, 10px, 0);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes firefly-wander-alt {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.8;
+  }
+  32% {
+    transform: translate3d(-24px, -22px, 0);
+    opacity: 0.25;
+  }
+  55% {
+    transform: translate3d(-46px, 6px, 0);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate3d(-18px, 30px, 0);
+    opacity: 0.2;
+  }
+  92% {
+    transform: translate3d(8px, 14px, 0);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes firefly-wander-lazy {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  35% {
+    transform: translate3d(14px, -34px, 0);
+    opacity: 0.2;
+  }
+  55% {
+    transform: translate3d(34px, -8px, 0);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate3d(16px, 26px, 0);
+    opacity: 0.25;
+  }
+  95% {
+    transform: translate3d(-6px, 12px, 0);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* Click sparks — small light shards flying off interactive targets. */
+.spark {
+  position: fixed;
+  width: var(--s, 6px);
+  height: var(--s, 6px);
+  border-radius: 999px;
+  background: var(--c, var(--cyan));
+  box-shadow:
+    0 0 8px var(--c, var(--cyan)),
+    0 0 2px #fff inset;
+  pointer-events: none;
+  z-index: 90;
+  animation: spark-fly var(--sd, 0.55s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* RPG-style status dialogue under the hero. */
+.dialogue-box {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  background: var(--veil);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent),
+    var(--glow-soft);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0.65rem 0.95rem;
+  min-height: 2.6rem;
+}
+
+.dialogue-caret {
+  display: inline-block;
+  color: var(--accent);
+  animation: caret-blink 1.05s steps(1) infinite;
+}
+
+/* Achievement popup — bottom-left, clear of the WhatsApp widget. */
+.achievement-toast {
+  --toast-gold: var(--gold, #e6bf6a);
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 96;
+  width: min(21rem, calc(100vw - 2rem));
+  padding: 0.9rem 1.05rem;
+  background: var(--panel-solid);
+  border: 1px solid var(--toast-gold);
+  border-radius: 14px;
+  box-shadow:
+    0 20px 44px -22px rgba(0, 0, 0, 0.65),
+    0 0 26px -10px color-mix(in srgb, var(--toast-gold) 65%, transparent);
+  animation: toast-in 0.55s cubic-bezier(0.22, 1.35, 0.36, 1) both;
+}
+
+.achievement-toast.is-leaving {
+  animation: toast-out 0.4s ease forwards;
+}
+
+.achievement-toast .toast-kicker {
+  font-family: var(--font-space);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--toast-gold);
+}
+
+/* Trailing glow orb that follows a fine pointer. */
+.cursor-wisp {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
+  z-index: 95;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  will-change: transform;
+}
+
+.cursor-wisp.is-on {
+  opacity: 1;
+}
+
+.cursor-wisp-core {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 85%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 35%, transparent) 45%,
+    transparent 72%
+  );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: wisp-pulse 2.4s ease-in-out infinite;
+}
+
+/* Ambient fireflies inside cards: sits behind all content (negative z in
+   the card's stacking context — .sheen isolates it) and above the panel
+   background, so text stays perfectly readable. */
+.fireflies {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.firefly {
+  --firefly-glow: rgba(99, 245, 231, 0.75);
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 9px 2px var(--firefly-glow);
+  opacity: 0;
+  transition: box-shadow 0.6s ease;
+  animation: firefly-wander var(--ff-dur, 12s) ease-in-out infinite;
+  animation-delay: var(--ff-delay, 0s);
+}
+
+.firefly:nth-child(1) {
+  left: 8%;
+  top: 64%;
+  --ff-dur: 11s;
+  --ff-delay: 0s;
+}
+
+.firefly:nth-child(2) {
+  left: 76%;
+  top: 16%;
+  --ff-dur: 14s;
+  --ff-delay: 2.8s;
+}
+
+.firefly:nth-child(3) {
+  left: 58%;
+  top: 80%;
+  --ff-dur: 16s;
+  --ff-delay: 5.4s;
+}
+
+.firefly:nth-child(4) {
+  left: 26%;
+  top: 30%;
+  --ff-dur: 13s;
+  --ff-delay: 8s;
+}
+
+.firefly:nth-child(5) {
+  left: 88%;
+  top: 56%;
+  --ff-dur: 15s;
+  --ff-delay: 4s;
+}
+
+/* Wander variants: alternate placement follows the alternate path. */
+.firefly:nth-child(2),
+.firefly:nth-child(4) {
+  animation-name: firefly-wander-alt;
+}
+
+.firefly:nth-child(3),
+.firefly:nth-child(5) {
+  animation-name: firefly-wander-lazy;
+}
+
+/* Daylight fireflies: warm motes. */
+[data-theme="light"] .firefly {
+  --firefly-glow: rgba(214, 163, 83, 0.6);
+  background: #d6a353;
+}
+
+/* Cards feel more alive as you approach. */
+.card-hover:hover .firefly {
+  --firefly-glow: rgba(99, 245, 231, 0.95);
+}
+
+[data-theme="light"] .card-hover:hover .firefly {
+  --firefly-glow: rgba(198, 143, 55, 0.8);
+}
+
+.anim-drift {
+  animation: pandora-drift var(--drift-dur, 26s) ease-in-out infinite;
+  will-change: transform;
+}
+
+.anim-float {
+  animation: pandora-float var(--float-dur, 9s) ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.anim-pulse {
+  transform-origin: center;
+  animation: pandora-pulse var(--pulse-dur, 5s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+svg .anim-pulse {
+  transform-box: fill-box;
+}
+
+.anim-beam {
+  animation: pandora-beam var(--beam-dur, 12s) ease-in-out infinite;
+}
+
+.anim-nudge {
+  animation: scroll-nudge 2.4s ease-in-out infinite;
+}
+
+.anim-ants {
+  stroke-dasharray: 6 10;
+  animation: marching-ants 22s linear infinite;
+}
+
+/* Entrance: hairline rules draw themselves in (plays once). */
+.anim-grow {
+  transform-origin: left center;
+  animation: line-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Micro-life for small badges/pills. */
+.anim-bob {
+  animation: gentle-bob 6s ease-in-out infinite;
+}
+
+/* Particle dots: slow drift + soft double-blink (see pandora-twinkle). */
+.anim-twinkle {
+  animation: pandora-twinkle var(--tw-dur, 12s) ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+/* Static dots (card pips, list glows, separators): soft blink. */
+.anim-blink {
+  animation: soft-blink var(--blink-dur, 3.4s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Reading-context bullets: a barely-there breath so even list dots blink
+   without pulling the eye off the text. */
+@keyframes soft-blink-gentle {
+  0%,
+  100% {
+    opacity: 0.6;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.25);
+  }
+}
+
+.anim-blink-gentle {
+  animation: soft-blink-gentle var(--blink-dur, 5.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Section ambience helpers */
+.scene-veil {
+  background: linear-gradient(
+    180deg,
+    var(--bg) 0%,
+    color-mix(in srgb, var(--bg) 70%, transparent) 35%,
+    color-mix(in srgb, var(--bg) 70%, transparent) 65%,
+    var(--bg) 100%
+  );
+}
+
+/* Cinematic sky washes per environment variant */
+.scene-sky-arrival {
+  background:
+    radial-gradient(70% 55% at 70% 8%, rgba(99, 245, 231, 0.16), transparent 62%),
+    radial-gradient(60% 50% at 12% 40%, rgba(22, 70, 63, 0.55), transparent 70%),
+    linear-gradient(180deg, #050c0b 0%, rgba(7, 17, 15, 0.2) 45%, rgba(7, 17, 15, 0.65) 100%);
+}
+
+.scene-sky-quiet {
+  background:
+    radial-gradient(65% 55% at 82% 18%, rgba(55, 214, 197, 0.12), transparent 65%),
+    radial-gradient(70% 60% at 8% 65%, rgba(16, 44, 40, 0.6), transparent 72%),
+    linear-gradient(180deg, #050c0b 0%, rgba(7, 17, 15, 0.35) 50%, rgba(7, 17, 15, 0.7) 100%);
+}
+
+.scene-sky-gateway {
+  background:
+    radial-gradient(48% 60% at 50% 42%, rgba(99, 245, 231, 0.2), transparent 66%),
+    radial-gradient(70% 50% at 20% 88%, rgba(22, 70, 63, 0.5), transparent 70%),
+    linear-gradient(180deg, #050c0b 0%, rgba(7, 17, 15, 0.3) 40%, rgba(5, 12, 11, 0.85) 100%);
+}
+
+[data-theme="light"] .scene-sky-arrival {
+  background:
+    radial-gradient(52% 44% at 76% 5%, rgba(255, 205, 138, 0.55), transparent 62%),
+    radial-gradient(70% 55% at 70% 8%, rgba(12, 124, 112, 0.14), transparent 62%),
+    radial-gradient(60% 50% at 12% 40%, rgba(214, 226, 214, 0.95), transparent 70%),
+    linear-gradient(180deg, #e8ede4 0%, rgba(244, 243, 236, 0.25) 45%, rgba(244, 243, 236, 0.75) 100%);
+}
+
+[data-theme="light"] .scene-sky-quiet {
+  background:
+    radial-gradient(46% 40% at 84% 8%, rgba(255, 212, 150, 0.42), transparent 64%),
+    radial-gradient(65% 55% at 82% 18%, rgba(12, 124, 112, 0.12), transparent 65%),
+    radial-gradient(70% 60% at 8% 65%, rgba(214, 226, 214, 0.9), transparent 72%),
+    linear-gradient(180deg, #eaece4 0%, rgba(244, 243, 236, 0.35) 50%, rgba(244, 243, 236, 0.8) 100%);
+}
+
+[data-theme="light"] .scene-sky-gateway {
+  background:
+    radial-gradient(50% 44% at 50% 6%, rgba(255, 208, 142, 0.5), transparent 62%),
+    radial-gradient(48% 60% at 50% 42%, rgba(12, 124, 112, 0.16), transparent 66%),
+    radial-gradient(70% 50% at 20% 88%, rgba(214, 226, 214, 0.95), transparent 70%),
+    linear-gradient(180deg, #e8ede4 0%, rgba(244, 243, 236, 0.3) 40%, rgba(244, 243, 236, 0.9) 100%);
+}
+
+/* ------------------------------------------------------------------
+   Daylight pass — the light mood gets its own living atmosphere:
+   a rising sun bloom, warm sun shafts, golden pollen instead of
+   spores, and landscape art that stays saturated instead of washed
+   out. Cross-faded smoothly when the theme toggles.
+------------------------------------------------------------------- */
+.scene-sun {
+  display: none;
+}
+
+[data-theme="light"] .scene-sun {
+  display: block;
+  position: absolute;
+  top: -24%;
+  right: -14%;
+  width: min(86vw, 62rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 214, 138, 0.72),
+    rgba(255, 198, 118, 0.34) 36%,
+    rgba(255, 236, 198, 0.14) 60%,
+    transparent 76%
+  );
+  filter: blur(12px);
+  animation: pandora-sunrise 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.scene-art {
+  transition:
+    opacity 0.7s ease,
+    filter 0.7s ease;
+}
+
+[data-theme="light"] .scene-art {
+  opacity: 0.62;
+  filter: saturate(0.85) brightness(1.07) contrast(0.97);
+}
+
+/* Bioluminescent spores become drifting pollen by day. */
+[data-theme="light"] .scene-particles {
+  opacity: 0.95;
+}
+
+[data-theme="light"] .scene-particles .anim-twinkle {
+  background-color: #d6a353 !important;
+  box-shadow:
+    0 0 12px rgba(214, 163, 83, 0.9) !important,
+    0 0 3px rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Light shafts: teal glow in the dark, warm sunlight by day. */
+[data-theme="light"] .anim-beam {
+  mix-blend-mode: normal;
+  animation-name: pandora-beam-light;
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 206, 132, 0.78) 0%,
+    rgba(255, 232, 182, 0.26) 45%,
+    transparent 85%
+  ) !important;
+}
+
+/* Mist banks multiply into soft daylight haze. */
+[data-theme="light"] .anim-drift {
+  mix-blend-mode: multiply;
+}
+
+/* Sunrise-style palette cross-fade for the whole page. */
+::view-transition-old(root) {
+  animation: vt-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: vt-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .anim-drift,
+  .anim-float,
+  .anim-pulse,
+  .anim-beam,
+  .anim-nudge,
+  .anim-ants,
+  .anim-grow,
+  .anim-bob,
+  .anim-twinkle,
+  .anim-blink,
+  .anim-blink-gentle {
+    animation: none !important;
+  }
+  .text-gradient {
+    animation: none !important;
+    background-size: 100% 100% !important;
+  }
+  .scene-sun,
+  .scroll-progress {
+    animation: none !important;
+  }
+  .btn-primary::after,
+  .sheen::after {
+    animation: none !important;
+  }
+  .spark {
+    display: none !important;
+  }
+  .fireflies {
+    display: none !important;
+  }
+  .dialogue-caret,
+  .achievement-toast,
+  .cursor-wisp {
+    animation: none !important;
+  }
+  .cursor-wisp {
+    display: none !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.12s !important;
+  }
+  .card-hover:hover,
+  .btn-primary:hover,
+  .btn-ghost:hover {
+    transform: none;
+  }
+}
+
+/* Skill ecosystem: interactive map on desktop, static grid on small
+   screens and whenever reduced motion is requested. Unlayered on purpose
+   so these visibility rules beat Tailwind display utilities. */
+.skills-map {
+  display: none;
+}
+
+.skills-static {
+  display: grid;
+}
+
+@media (min-width: 768px) {
+  .skills-map {
+    display: block;
+  }
+  .skills-static {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skills-map {
+    display: none;
+  }
+  .skills-static {
+    display: grid;
+  }
 }

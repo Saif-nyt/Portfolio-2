@@ -1,0 +1,98 @@
+[
+  {
+    "id": "web-development",
+    "title": "Web Development",
+    "blurb": "Full-stack application work with modern React tooling — typed, componentised and responsive by default.",
+    "x": 26,
+    "y": 30,
+    "items": [
+      {
+        "name": "Full-stack web development"
+      },
+      {
+        "name": "Next.js"
+      },
+      {
+        "name": "React"
+      },
+      {
+        "name": "JavaScript"
+      },
+      {
+        "name": "HTML and CSS"
+      },
+      {
+        "name": "Tailwind CSS"
+      }
+    ]
+  },
+  {
+    "id": "cms-commerce",
+    "title": "CMS & E-commerce",
+    "blurb": "Content-driven sites and storefronts built for editors to run without breaking the design.",
+    "x": 72,
+    "y": 26,
+    "items": [
+      {
+        "name": "WordPress"
+      },
+      {
+        "name": "Elementor"
+      },
+      {
+        "name": "Shopify"
+      },
+      {
+        "name": "E-commerce website development"
+      }
+    ]
+  },
+  {
+    "id": "digital-marketing",
+    "title": "Digital Marketing",
+    "blurb": "Paid social campaigns with clear structure, deliberate creative testing and measurement that informs decisions.",
+    "x": 30,
+    "y": 72,
+    "items": [
+      {
+        "name": "Meta Ads"
+      },
+      {
+        "name": "Campaign structure and optimization"
+      },
+      {
+        "name": "Conversion-focused landing pages"
+      },
+      {
+        "name": "Creative testing and campaign measurement"
+      }
+    ]
+  },
+  {
+    "id": "tracking-analytics",
+    "title": "Tracking & Analytics",
+    "blurb": "The measurement layer: browser and server events wired once, deduplicated properly, and validated before reporting.",
+    "x": 74,
+    "y": 70,
+    "items": [
+      {
+        "name": "Facebook Conversion API"
+      },
+      {
+        "name": "Server-side tracking"
+      },
+      {
+        "name": "GA4"
+      },
+      {
+        "name": "Meta Pixel"
+      },
+      {
+        "name": "Event mapping and deduplication"
+      },
+      {
+        "name": "Conversion tracking and debugging"
+      }
+    ]
+  }
+]

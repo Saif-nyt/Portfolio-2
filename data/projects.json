@@ -1,0 +1,541 @@
+[
+  {
+    "slug": "premium-ecommerce-storefront",
+    "index": "01",
+    "title": "Premium E-commerce Storefront",
+    "category": "wordpress",
+    "categoryLabel": "WordPress / E-commerce",
+    "stack": [
+      "WordPress",
+      "WooCommerce",
+      "Elementor",
+      "Performance tuning"
+    ],
+    "summary": "A premium skincare storefront built around strong product presentation, mobile-first layouts and a streamlined path to purchase.",
+    "accent": "cyan",
+    "overview": "How a premium skincare brand translates in-store trust into a WordPress storefront: generous product photography space, clear benefit hierarchy, and a checkout path that never loses the customer's momentum.",
+    "problem": "Beauty and skincare shoppers decide with their eyes first and their questions second. Storefronts that hide benefits behind generic templates lose people on the product page — before price even becomes a factor.",
+    "audience": "Independent skincare and cosmetics brands selling directly to consumers, primarily on mobile devices.",
+    "role": "Lead — information architecture, interface design, WordPress implementation approach and performance plan.",
+    "services": [
+      "WordPress development",
+      "E-commerce page design",
+      "Responsive layout system",
+      "Speed and usability improvements"
+    ],
+    "tools": [
+      "WordPress",
+      "WooCommerce",
+      "Elementor",
+      "Core Web Vitals tooling"
+    ],
+    "designDecisions": [
+      "Benefit-led product pages: outcome first, ingredients second, social proof third.",
+      "A restrained palette so product photography carries the visual weight.",
+      "Sticky add-to-cart bar on mobile, where most of the traffic lands.",
+      "Collection templates designed for scanning — price, size and key claim always visible."
+    ],
+    "implementation": [
+      "Modular Elementor sections with a locked type scale so editors cannot break the hierarchy.",
+      "Lazy-loaded media below the fold and compressed hero imagery to protect LCP.",
+      "Semantic templates for homepage, collection, product and cart to keep crawl paths clean.",
+      "Accessible form controls, focus states and contrast across the purchase flow."
+    ],
+    "sections": [
+      {
+        "label": "Homepage",
+        "body": [
+          "Hero with a single, confident promise and one primary action.",
+          "Ingredient and benefit storytelling broken into short, scannable blocks.",
+          "Best-seller grid that adapts from four columns to a swipeable two-up on mobile."
+        ]
+      },
+      {
+        "label": "Product page",
+        "body": [
+          "Large imagery, benefit bullets above the fold, and an always-reachable purchase panel.",
+          "FAQ and shipping expectations resolved before the customer has to ask."
+        ]
+      },
+      {
+        "label": "Product listing",
+        "body": [
+          "Filterable collection layout with clear price, size and skin-concern signals.",
+          "Consistent card rhythm so the grid stays calm even with heavy imagery."
+        ]
+      },
+      {
+        "label": "Mobile layout",
+        "body": [
+          "Single-column flow, thumb-reachable actions and no horizontal scrolling at any breakpoint."
+        ]
+      },
+      {
+        "label": "Design rationale",
+        "body": [
+          "Every layout choice answers one question: does this help the shopper decide faster?",
+          "The system stays deliberately quiet so photography and copy do the selling."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Homepage, collection and product templates",
+      "Responsive mobile layout",
+      "Editor-safe component library",
+      "Performance and usability checklist"
+    ],
+    "results": null,
+    "lessons": [
+      "Product pages convert on clarity, not on decoration — the design system had to enforce that.",
+      "Editor-friendly modals matter as much as customer-facing ones; a beautiful site that editors break in week two fails."
+    ],
+    "related": [
+      "shopify-commerce-experience",
+      "high-impact-landing-page"
+    ]
+  },
+  {
+    "slug": "shopify-commerce-experience",
+    "index": "02",
+    "title": "Shopify Commerce Experience",
+    "category": "shopify",
+    "categoryLabel": "Shopify",
+    "stack": [
+      "Shopify",
+      "Liquid templating",
+      "Responsive design"
+    ],
+    "summary": "An online store with polished collection pages, compelling product presentation and a simplified purchasing journey.",
+    "accent": "turquoise",
+    "overview": "A storefront that explores how Shopify's native strengths — fast checkout, clean collections, reliable merchandising — can be shaped into a distinctive brand experience without fighting the platform.",
+    "problem": "Many Shopify stores look identical because they start from the same theme. The challenge is expressing brand character while keeping the platform's conversion advantages intact.",
+    "audience": "Small and growing product brands that need a storefront that looks custom but stays maintainable.",
+    "role": "Lead — storefront structure, theme customisation approach and merchandising patterns.",
+    "services": [
+      "Store setup and customisation",
+      "Theme customisation",
+      "Product and collection page design",
+      "Mobile shopping experience"
+    ],
+    "tools": [
+      "Shopify",
+      "Liquid",
+      "Shopify theme editor"
+    ],
+    "designDecisions": [
+      "Collection pages designed as editorial spreads rather than plain product grids.",
+      "Product cards carry one clear claim and one clear price — nothing else competes.",
+      "A quiet, high-contrast type system so seasonal campaigns can recolour the store safely."
+    ],
+    "implementation": [
+      "Section-based layout so merchants can rearrange the homepage without a developer.",
+      "Responsive image handling and deferred non-critical scripts to protect load speed.",
+      "Consistent product card component reused across collection, search and related blocks.",
+      "Accessible navigation and form controls throughout the buying journey."
+    ],
+    "sections": [
+      {
+        "label": "Homepage",
+        "body": [
+          "Brand statement, featured collection and a single clear path into shopping."
+        ]
+      },
+      {
+        "label": "Collection page",
+        "body": [
+          "Balanced grid density, sticky filters on mobile and always-visible pricing."
+        ]
+      },
+      {
+        "label": "Product details",
+        "body": [
+          "Imagery-first layout with sizing, shipping and returns answers close to the buy button."
+        ]
+      },
+      {
+        "label": "Responsive layouts",
+        "body": [
+          "Design reviewed at 360px, 768px and 1440px before any feature is considered finished."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Customised Shopify theme",
+      "Homepage and collection templates",
+      "Product detail template",
+      "Responsive QA pass"
+    ],
+    "results": null,
+    "lessons": [
+      "Working with a platform's grain beats working against it — most customisation value came from layout and content systems, not from rewriting core behaviour."
+    ],
+    "related": [
+      "premium-ecommerce-storefront",
+      "high-impact-landing-page"
+    ]
+  },
+  {
+    "slug": "conversion-tracking-architecture",
+    "index": "03",
+    "title": "Conversion Tracking Architecture",
+    "category": "tracking",
+    "categoryLabel": "Analytics / Tracking",
+    "stack": [
+      "Meta Pixel",
+      "Facebook Conversion API",
+      "GA4",
+      "Server-side events",
+      "Event deduplication"
+    ],
+    "summary": "A walkthrough of how browser events, server events and deduplication work together into one trustworthy measurement layer.",
+    "accent": "mist",
+    "overview": "A reference build documenting an end-to-end measurement architecture: what fires in the browser, what fires on the server, how the two are matched, and how an analyst confirms everything is healthy.",
+    "problem": "Browser-only tracking degrades as privacy controls tighten. When Pixel events and server events are wired separately — or wired twice — reporting becomes either incomplete or double-counted.",
+    "audience": "Marketing teams and business owners running paid social who need measurement they can defend in a reporting meeting.",
+    "role": "Tracking architect — event taxonomy, browser and server wiring plan, validation workflow.",
+    "services": [
+      "Meta Pixel integration",
+      "Facebook Conversion API setup",
+      "Browser/server event deduplication",
+      "Event validation and diagnostics",
+      "GA4 integration"
+    ],
+    "tools": [
+      "Meta Events Manager",
+      "Facebook Conversion API",
+      "GA4",
+      "Tag management"
+    ],
+    "designDecisions": [
+      "One event taxonomy used by browser, server and dashboards — names and parameters never drift.",
+      "Event IDs generated once and shared by both channels so deduplication is deterministic.",
+      "A validation checklist treated as part of the deliverable, not an afterthought."
+    ],
+    "implementation": [
+      "Browser Pixel fires page view and engagement events with stable event IDs.",
+      "Server-side Conversions API sends the same events with matching IDs and hashed customer parameters.",
+      "Deduplication confirmed in Events Manager by checking event count parity.",
+      "GA4 receives a parallel, privacy-conscious event stream for analytics reporting."
+    ],
+    "sections": [
+      {
+        "label": "Tracking architecture",
+        "body": [
+          "Diagram of sources: site events → browser Pixel and server CAPI → Meta event deduplication → reporting."
+        ]
+      },
+      {
+        "label": "Event flow",
+        "body": [
+          "Purchase, lead, add-to-cart and key micro-conversions mapped end to end."
+        ]
+      },
+      {
+        "label": "Deduplication diagram",
+        "body": [
+          "event_id and event_source_url shown as the matching keys between browser and server."
+        ]
+      },
+      {
+        "label": "Event validation checklist",
+        "body": [
+          "Each event verified for presence, parameters, deduplication and alert configuration."
+        ]
+      },
+      {
+        "label": "Example dashboard",
+        "body": [
+          "Illustrative dashboard layout showing how event health is reported after launch."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Event taxonomy document",
+      "Pixel + Conversion API configuration",
+      "Deduplication verification",
+      "Validation checklist and diagnostics notes"
+    ],
+    "results": null,
+    "lessons": [
+      "Most tracking problems are naming and identity problems — fixing the taxonomy resolves a surprising share of broken reports.",
+      "Measurement should be documented for the person who inherits it, not just configured for the person who built it."
+    ],
+    "related": [
+      "full-stack-business-dashboard",
+      "premium-ecommerce-storefront"
+    ]
+  },
+  {
+    "slug": "full-stack-business-dashboard",
+    "index": "04",
+    "title": "Full-Stack Business Dashboard",
+    "category": "web-development",
+    "categoryLabel": "Full-Stack Development",
+    "stack": [
+      "Next.js",
+      "TypeScript",
+      "React",
+      "REST API integration"
+    ],
+    "summary": "An application dashboard for managing business information, products and operational data — including the states most demos skip.",
+    "accent": "cyan",
+    "overview": "An operations dashboard focused on the unglamorous parts that decide whether a tool gets used: readable tables, fast filters, honest loading states and errors that explain themselves.",
+    "problem": "Internal tools are usually demoed on happy paths with perfect data. Real usage means empty tables, slow responses, partial failures and people in a hurry.",
+    "audience": "Small business teams managing catalogues, orders or operational records day to day.",
+    "role": "Full-stack engineer — data model, API integration, interface system and state handling.",
+    "services": [
+      "Frontend development",
+      "Backend and API integration",
+      "Responsive interfaces",
+      "Loading, error and empty state design"
+    ],
+    "tools": [
+      "Next.js",
+      "TypeScript",
+      "React",
+      "Tailwind CSS"
+    ],
+    "designDecisions": [
+      "Tables are the product: dense, keyboard-navigable, with predictable column alignment.",
+      "Filters live in the URL so a view can be shared or refreshed without losing state.",
+      "Every async surface ships four states — loading, empty, error and success — designed together."
+    ],
+    "implementation": [
+      "Server Components for data-heavy views, Client Components only where interaction demands it.",
+      "Optimistic UI for lightweight edits with rollback on failure.",
+      "Accessible dialogs, toasts and focus management across keyboard and screen reader flows.",
+      "Responsive table strategy: horizontal scroll with frozen key columns on small screens."
+    ],
+    "sections": [
+      {
+        "label": "Dashboard",
+        "body": [
+          "Summary metrics and recent activity without vanity charts."
+        ]
+      },
+      {
+        "label": "Data tables",
+        "body": [
+          "Sortable, filterable and paginated records with clear bulk actions."
+        ]
+      },
+      {
+        "label": "Filters",
+        "body": [
+          "Composable filters reflected in the URL for shareable views."
+        ]
+      },
+      {
+        "label": "API integration",
+        "body": [
+          "Typed fetch layer with explicit error boundaries per resource."
+        ]
+      },
+      {
+        "label": "States",
+        "body": [
+          "Loading skeletons, actionable error messages and empty states that teach the next step."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Responsive dashboard UI",
+      "Typed API integration layer",
+      "Reusable table and filter components",
+      "State handling patterns documented"
+    ],
+    "results": null,
+    "lessons": [
+      "Designing the error state first changes the architecture — it surfaces which failures actually matter."
+    ],
+    "related": [
+      "conversion-tracking-architecture",
+      "immersive-creative-portfolio"
+    ]
+  },
+  {
+    "slug": "high-impact-landing-page",
+    "index": "05",
+    "title": "High-Impact Landing Page",
+    "category": "web-development",
+    "alsoIn": [
+      "marketing"
+    ],
+    "categoryLabel": "Web Development / Marketing",
+    "stack": [
+      "Next.js",
+      "Tailwind CSS",
+      "Meta Ads",
+      "GA4"
+    ],
+    "summary": "A conversion-focused landing page for a digital product or e-commerce offer — message match from ad to CTA.",
+    "accent": "turquoise",
+    "overview": "A landing page built for paid traffic: one audience, one promise, one primary action, and every section answering the next objection in order.",
+    "problem": "Most landing pages fail because they mirror the homepage. Visitors arriving from an ad expect the promise they clicked — not a company overview.",
+    "audience": "Campaign traffic from Meta Ads arriving cold on a single offer.",
+    "role": "Designer and developer — message architecture, page build, and measurement wiring.",
+    "services": [
+      "Conversion-focused landing page build",
+      "Campaign structure alignment",
+      "Pixel and event configuration",
+      "Creative testing support"
+    ],
+    "tools": [
+      "Next.js",
+      "Tailwind CSS",
+      "Meta Pixel",
+      "GA4"
+    ],
+    "designDecisions": [
+      "Headline reuses the ad's exact promise so message match is immediate.",
+      "Single primary CTA repeated at natural decision points — never competing buttons.",
+      "FAQ placed just before the final CTA to resolve the objections that stall conversions.",
+      "Fast first paint by design: no heavy hero media, no blocking scripts above the fold."
+    ],
+    "implementation": [
+      "Static-first rendering with interactivity layered on top.",
+      "Form and CTA events pushed to Pixel and GA4 with consistent event names.",
+      "Mobile-first layout reviewed at 360px before desktop polish.",
+      "Accessible contrast, focus order and label associations across every control."
+    ],
+    "sections": [
+      {
+        "label": "Hero",
+        "body": [
+          "Promise, proof element and the primary action visible without scrolling."
+        ]
+      },
+      {
+        "label": "Value proposition",
+        "body": [
+          "What it is, who it is for, and what changes after buying."
+        ]
+      },
+      {
+        "label": "Benefits",
+        "body": [
+          "Outcome-led blocks instead of feature dumps."
+        ]
+      },
+      {
+        "label": "Offer structure",
+        "body": [
+          "Price, what is included, and risk reversal in one clear block."
+        ]
+      },
+      {
+        "label": "FAQs",
+        "body": [
+          "Real objections answered plainly, structured with semantic markup."
+        ]
+      },
+      {
+        "label": "Primary CTA",
+        "body": [
+          "A final action block with contact alternatives for higher-consideration buyers."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Responsive landing page",
+      "Ad-to-page message map",
+      "Event tracking configuration",
+      "Pre-launch validation checklist"
+    ],
+    "results": null,
+    "lessons": [
+      "Cutting sections is the highest-leverage design decision on a landing page.",
+      "Tracking belongs in the launch checklist — retrofitting events after a campaign starts loses data."
+    ],
+    "related": [
+      "shopify-commerce-experience",
+      "conversion-tracking-architecture"
+    ]
+  },
+  {
+    "slug": "immersive-creative-portfolio",
+    "index": "06",
+    "title": "Immersive Creative Portfolio",
+    "category": "web-development",
+    "categoryLabel": "Creative Development",
+    "stack": [
+      "Next.js",
+      "Motion for React",
+      "Tailwind CSS",
+      "TypeScript"
+    ],
+    "summary": "The portfolio you are looking at — cinematic art direction, layered environmental storytelling and modern web animation, built to stay fast and accessible.",
+    "accent": "mist",
+    "overview": "This site itself: a Pandora-inspired digital ecosystem where every section is a different region of one world, built as a real Next.js application rather than a video.",
+    "problem": "Developer portfolios tend to look interchangeable. The challenge was to create something memorable that still loads fast, reads clearly, and converts a visitor into an enquiry.",
+    "audience": "Businesses evaluating web developers who want evidence of both engineering discipline and design taste.",
+    "role": "Designer and engineer — art direction, component system, animation architecture, performance and accessibility.",
+    "services": [
+      "Design system",
+      "Frontend development",
+      "Motion design",
+      "Performance optimisation",
+      "Accessibility implementation"
+    ],
+    "tools": [
+      "Next.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Motion for React",
+      "Lucide React"
+    ],
+    "designDecisions": [
+      "Environments are drawn with layered SVG and gradients — original artwork, no borrowed film assets.",
+      "Motion budget set per element: ambient drift for the world, quick reveals for content.",
+      "Bright cyan reserved for interaction; large surfaces stay deep and calm for contrast and taste.",
+      "Reduced-motion and mobile paths simplify particles, parallax and blur instead of shipping them everywhere."
+    ],
+    "implementation": [
+      "Server Components by default; Client Components only for menus, filters, theme and animation triggers.",
+      "Parallax driven by transform and opacity through Motion, gated by reduced-motion and viewport width.",
+      "Ambient particles are static markup animated in CSS — no canvas loop, no continuous JS.",
+      "Semantic structure, skip link, focus management and WCAG-conscious contrast throughout."
+    ],
+    "sections": [
+      {
+        "label": "Hero environment",
+        "body": [
+          "Layered forest, floating mountains, mist and a controlled headline reveal."
+        ]
+      },
+      {
+        "label": "Scroll transitions",
+        "body": [
+          "Each section shifts lighting and depth while staying one continuous world."
+        ]
+      },
+      {
+        "label": "Interactive components",
+        "body": [
+          "Skill ecosystem, project filters and theme toggle — all keyboard-operable."
+        ]
+      },
+      {
+        "label": "Responsive behaviour",
+        "body": [
+          "Parallax and particle counts reduced on small screens and low-powered devices."
+        ]
+      }
+    ],
+    "deliverables": [
+      "Full multi-route portfolio application",
+      "Design system and animation kit",
+      "Dark and light themes",
+      "Performance and accessibility pass"
+    ],
+    "results": null,
+    "lessons": [
+      "Cinematic does not have to mean heavy — most of the atmosphere comes from layering and timing, not from expensive effects.",
+      "A strong theme system forces better token discipline than hard-coding colours ever does."
+    ],
+    "related": [
+      "full-stack-business-dashboard",
+      "high-impact-landing-page"
+    ]
+  }
+]

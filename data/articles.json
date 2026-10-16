@@ -1,0 +1,327 @@
+[
+  {
+    "slug": "wordpress-vs-shopify-for-ecommerce",
+    "title": "WordPress vs. Shopify for E-commerce: Choosing With Intent",
+    "summary": "Both platforms can run a store. The right choice depends on who maintains it, how custom the buying experience needs to be, and where your complexity budget should go.",
+    "category": "E-commerce",
+    "publishedAt": "2026-09-18",
+    "readingTime": "6 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "how-facebook-conversion-api-works",
+      "designing-better-product-pages"
+    ],
+    "sections": [
+      {
+        "heading": "Start with maintenance, not features",
+        "paragraphs": [
+          "Feature comparison tables rarely decide this question. Both platforms can sell products, take payments and handle stock. The real difference appears in who keeps the site healthy six months after launch.",
+          "Shopify concentrates hosting, updates, security and checkout reliability into the platform. WordPress gives you full control of the stack, which means you also own updates, plugin conflicts, hosting quality and performance tuning."
+        ]
+      },
+      {
+        "heading": "Where each one wins",
+        "paragraphs": [
+          "Shopify wins when the goal is a dependable storefront quickly, the product catalogue is straightforward, and the team wants merchandising tools rather than a development backlog.",
+          "WordPress with WooCommerce wins when content and commerce need to live together — editorial, SEO-driven category pages, unusual product logic, or design requirements that go well beyond a theme."
+        ],
+        "list": [
+          "Choose Shopify if: fast launch, standard catalogue, minimal maintenance appetite.",
+          "Choose WordPress if: content-heavy strategy, bespoke requirements, existing editorial workflow.",
+          "Choose WordPress if: you already have hosting, developers and a maintenance routine you trust."
+        ]
+      },
+      {
+        "heading": "The cost question",
+        "paragraphs": [
+          "Shopify's cost is predictable: subscription, payment fees, and apps that quietly add up. WordPress can look cheaper upfront, then accumulates hosting, premium plugins, developer hours and the occasional emergency fix.",
+          "Compare three-year total cost of ownership, not month-one price. The cheaper option is usually the one your team can operate without help."
+        ]
+      },
+      {
+        "heading": "A practical decision rule",
+        "paragraphs": [
+          "If nobody on the team wants to think about plugins, updates or server behaviour, choose Shopify. If you need content and commerce designed as one experience and can support the site technically, choose WordPress.",
+          "Either way, decide the measurement plan before launch: pixel, GA4 and key events are far easier to wire correctly on a clean build than to retrofit later."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "how-facebook-conversion-api-works",
+    "title": "How Facebook Conversion API Works (And Why It Pairs With the Pixel)",
+    "summary": "A plain-language walkthrough of server-side events, how they complement browser events, and what actually needs to match for deduplication to work.",
+    "category": "Tracking",
+    "publishedAt": "2026-09-26",
+    "readingTime": "7 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "common-meta-pixel-tracking-mistakes",
+      "what-to-validate-before-scaling-meta-ads"
+    ],
+    "sections": [
+      {
+        "heading": "Two channels, one event stream",
+        "paragraphs": [
+          "The Meta Pixel sends events from the visitor's browser. The Conversions API (CAPI) sends the same events from your server. Meta receives both and, when they are matched correctly, treats them as a single event rather than two.",
+          "The point of the second channel is resilience: browser-side signals can be limited by content blockers, consent choices and platform changes. A server-side event still fires when the browser drops one."
+        ]
+      },
+      {
+        "heading": "What must match for deduplication",
+        "paragraphs": [
+          "Deduplication depends on two identifiers travelling with both the browser and server event: event_id and event_source_url. If either differs, Meta counts two conversions instead of one — inflating results and confusing optimisation.",
+          "The cleanest pattern is to generate one event_id at the moment the event happens and hand it to both the Pixel call and the server payload."
+        ],
+        "list": [
+          "event_id: identical on browser and server.",
+          "event_source_url: identical on browser and server.",
+          "event name: identical spelling and casing on both sides.",
+          "action_source: set to website on server events."
+        ]
+      },
+      {
+        "heading": "What the server actually sends",
+        "paragraphs": [
+          "A CAPI payload includes the event name, timestamp, a click ID or browser ID when available, and customer information — email or phone, hashed before transmission — plus custom data such as value and currency.",
+          "Hashing matters: customer data should be normalised (trimmed, lowercased for email) before hashing, or the match quality silently drops."
+        ]
+      },
+      {
+        "heading": "How to verify it works",
+        "paragraphs": [
+          "Open Events Manager and check that events appear with both browser and server sources, that deduplicated counts are stable, and that the event setup tool shows no configuration errors.",
+          "Verify the four events that matter to the business — for example ViewContent, AddToCart, InitiateCheckout, Purchase — before scaling spend. Anything else is noise until the core path is healthy."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "common-meta-pixel-tracking-mistakes",
+    "title": "Common Meta Pixel Tracking Mistakes (and How to Spot Them)",
+    "summary": "Duplicate events, broken purchase values, misconfigured funnels — the recurring issues that quietly corrupt ad reporting, and the checks that catch them.",
+    "category": "Tracking",
+    "publishedAt": "2026-10-03",
+    "readingTime": "6 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "how-facebook-conversion-api-works",
+      "what-to-validate-before-scaling-meta-ads"
+    ],
+    "sections": [
+      {
+        "heading": "1. The same event firing twice",
+        "paragraphs": [
+          "The most common failure is a Pixel installed both manually and via a tag manager, or a purchase event triggered on every step of a thank-you flow. Reporting shows conversions that never happened.",
+          "Symptom: purchase count exceeds actual orders. Check with the Meta Pixel Helper and Events Manager diagnostics."
+        ]
+      },
+      {
+        "heading": "2. Events firing on the wrong page",
+        "paragraphs": [
+          "A Purchase event must fire once, on the confirmation page, after the order exists. An InitiateCheckout firing on a generic cart page inflates funnel numbers and misleads optimisation.",
+          "Symptom: funnel steps that do not follow a logical descending order."
+        ]
+      },
+      {
+        "heading": "3. Missing or wrong values",
+        "paragraphs": [
+          "Purchase events without value and currency cannot optimise properly. Currency codes must be standard ISO values, and value must reflect what the customer actually paid, including discounts.",
+          "Symptom: cost per purchase looks unstable while backend revenue looks steady."
+        ]
+      },
+      {
+        "heading": "4. Firing before consent",
+        "paragraphs": [
+          "Loading every script before a consent decision creates both a compliance risk and a measurement mess, since later consent states produce inconsistent event streams.",
+          "Symptom: event volume that changes sharply depending on region or browser."
+        ]
+      },
+      {
+        "heading": "A five-minute monthly health check",
+        "paragraphs": [
+          "Review Events Manager diagnostics, confirm the four core events fired in the last 7 days, check deduplication status if CAPI is live, and compare Pixel purchase count with actual store orders.",
+          "A tracking setup that is validated monthly stays trustworthy; one that is validated annually does not."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "designing-better-product-pages",
+    "title": "Designing Better Product Pages: Hierarchy Before Decoration",
+    "summary": "Shoppers scan in a fixed order. Product pages convert when they answer questions in that order — and lose them when design gets in the way.",
+    "category": "Design",
+    "publishedAt": "2026-10-07",
+    "readingTime": "5 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "wordpress-vs-shopify-for-ecommerce",
+      "how-website-performance-affects-user-experience"
+    ],
+    "sections": [
+      {
+        "heading": "The scan order",
+        "paragraphs": [
+          "A shopper looks at the product image, the name, the price, the primary benefit, the proof, and only then the detail. Design that interrupts this order — badges over the image, competing buttons, benefit copy buried in a tab — costs decisions.",
+          "Map your page to that order and most layout arguments resolve themselves."
+        ]
+      },
+      {
+        "heading": "Benefits before specifications",
+        "paragraphs": [
+          "Specifications reassure; benefits decide. Lead with the outcome the customer wants, then let ingredients, materials or technical data support it.",
+          "Three short benefit bullets outperform one long paragraph — particularly on mobile, where the first screen is the whole argument."
+        ]
+      },
+      {
+        "heading": "Proof where doubt appears",
+        "paragraphs": [
+          "Reviews near the purchase decision, shipping and returns answers beside the buy button, and guarantees where hesitation peaks. Proof placed at the bottom helps nobody."
+        ]
+      },
+      {
+        "heading": "Restraint is a feature",
+        "paragraphs": [
+          "Every extra colour, animation and badge competes with the purchase button. A product page with one accent colour and a disciplined type scale reads as trustworthy — and photographs better."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "how-website-performance-affects-user-experience",
+    "title": "How Website Performance Affects User Experience",
+    "summary": "Speed is not a technical vanity metric. It shapes first impressions, scroll depth, conversion rate — and how much your ad budget actually buys.",
+    "category": "Performance",
+    "publishedAt": "2026-10-11",
+    "readingTime": "5 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "designing-better-product-pages",
+      "when-to-choose-nextjs-for-a-business-website"
+    ],
+    "sections": [
+      {
+        "heading": "The first three seconds",
+        "paragraphs": [
+          "A slow first paint sets the tone before a single word is read. Visitors arrive with intent and very little patience; each additional second of delay is a chance they leave — usually without any signal in your analytics beyond a bounce."
+        ]
+      },
+      {
+        "heading": "What actually moves the needle",
+        "paragraphs": [
+          "Most performance problems are not exotic. Oversized hero images, render-blocking fonts, tag manager payloads and third-party scripts explain the majority of slow experiences.",
+          "Fix order matters: stabilise the layout and text first, then images, then interactivity, then the long tail."
+        ],
+        "list": [
+          "Prioritise the hero image and preload the primary font.",
+          "Defer non-critical scripts, especially marketing tags above the fold.",
+          "Compress and correctly size media instead of shipping full-resolution assets.",
+          "Reserve space for dynamic content to avoid layout shifts."
+        ]
+      },
+      {
+        "heading": "Performance and paid traffic",
+        "paragraphs": [
+          "Landing page speed feeds directly into ad experience signals and into how many clicks survive to a meaningful session. A slow page makes an otherwise sound campaign look like a targeting problem."
+        ]
+      },
+      {
+        "heading": "Measure on real devices",
+        "paragraphs": [
+          "Desktop Lighthouse scores hide mobile reality. Test on a mid-range phone and a throttled connection — that is closer to where most customers actually are."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "when-to-choose-nextjs-for-a-business-website",
+    "title": "When to Choose Next.js for a Business Website",
+    "summary": "Next.js is a strong default for many sites — but not every site. A practical guide to where it earns its place and where simpler tools serve better.",
+    "category": "Development",
+    "publishedAt": "2026-10-14",
+    "readingTime": "6 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "how-website-performance-affects-user-experience",
+      "wordpress-vs-shopify-for-ecommerce"
+    ],
+    "sections": [
+      {
+        "heading": "Where Next.js earns its place",
+        "paragraphs": [
+          "Next.js shines when the site is an application as much as a brochure: dynamic routes driven by data, personalisation, dashboards, search, or content that must render fast and index cleanly.",
+          "Its routing, image optimisation, server rendering and caching model give you a coherent way to handle all of that without assembling a dozen tools."
+        ]
+      },
+      {
+        "heading": "When something simpler is better",
+        "paragraphs": [
+          "If the site is a handful of marketing pages updated twice a year by non-technical staff, a full application framework adds cost without adding value. WordPress or a static site will be cheaper to own.",
+          "Team capability matters too: a Next.js site needs someone comfortable with modern JavaScript tooling for ongoing work."
+        ]
+      },
+      {
+        "heading": "The decision checklist",
+        "paragraphs": [
+          "Ask whether you need data-driven pages, integrations, custom interaction, or strict performance budgets. Two or more yes answers usually justify Next.js.",
+          "Also ask who maintains it after launch. A framework nobody can maintain becomes an expensive liability."
+        ]
+      },
+      {
+        "heading": "A note on performance expectations",
+        "paragraphs": [
+          "Next.js makes fast experiences achievable — it does not make them automatic. Heavy client-side effects, unoptimised media and third-party scripts still dominate real-world load times."
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "what-to-validate-before-scaling-meta-ads",
+    "title": "What to Validate Before Scaling Meta Ads",
+    "summary": "Scaling amplifies whatever already exists — including broken tracking, weak creative and unclear offers. A pre-scale checklist for spend increases.",
+    "category": "Advertising",
+    "publishedAt": "2026-10-15",
+    "readingTime": "6 min read",
+    "author": "T. M. Saiful Islam",
+    "related": [
+      "common-meta-pixel-tracking-mistakes",
+      "how-facebook-conversion-api-works"
+    ],
+    "sections": [
+      {
+        "heading": "1. Measurement is trustworthy",
+        "paragraphs": [
+          "Before budget goes up, confirm that key events fire correctly, values are accurate, deduplication is active if CAPI is in use, and platform-reported purchases closely match backend orders.",
+          "Scaling on broken data does not just waste money — it teaches the algorithm the wrong audience."
+        ]
+      },
+      {
+        "heading": "2. The funnel holds below the ad",
+        "paragraphs": [
+          "Ads get blamed for landing page problems. Check page speed, mobile layout, form completion and checkout friction before concluding that creative is exhausted.",
+          "Watch session recordings or funnel drop-off if available; often the fix is one field removed or one answer surfaced earlier."
+        ]
+      },
+      {
+        "heading": "3. Creative testing is structured",
+        "paragraphs": [
+          "Scaling needs a repeatable testing rhythm: one variable at a time, a clear hypothesis, enough budget for each test to exit the learning phase, and a written record of what won and why.",
+          "Creative fatigue is predictable — refreshing on a schedule beats refreshing after performance collapses."
+        ]
+      },
+      {
+        "heading": "4. Budget increases are staged",
+        "paragraphs": [
+          "Large single jumps reset learning and destabilise performance. Step budgets up gradually, one change at a time, and hold long enough to read the result before the next change."
+        ]
+      },
+      {
+        "heading": "The one-page pre-scale checklist",
+        "paragraphs": [
+          "Events healthy; page converts on mobile; offer and message match verified; creative tests documented; budget plan staged; alerting in place if events stop firing.",
+          "If any line is unchecked, fixing it is cheaper than buying more traffic into a leak."
+        ]
+      }
+    ]
+  }
+]
