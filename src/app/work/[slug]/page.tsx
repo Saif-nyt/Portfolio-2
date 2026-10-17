@@ -14,6 +14,7 @@ import { ProjectVisual } from "@/components/ui/ProjectVisual";
 import { Scene } from "@/components/environment/Scene";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Section } from "@/components/ui/Section";
+import { PROJECT_KIND_LABELS } from "@/data/projects";
 import { getAllProjects } from "@/server/projects";
 import { getCachedProject } from "@/server/projects-cache";
 import { SITE, SITE_URL } from "@/lib/site";
@@ -92,6 +93,9 @@ export default async function ProjectPage({
             <span className="font-mono text-xs tracking-[0.2em] text-faint">{project.index}</span>
             <span className="rounded-full border border-linestrong bg-accentsoft px-3 py-1 text-[0.7rem] tracking-wide text-accent">
               {project.categoryLabel}
+            </span>
+            <span className="rounded-full border border-line px-3 py-1 text-[0.7rem] tracking-wide text-dim">
+              {PROJECT_KIND_LABELS[project.kind ?? "concept"]}
             </span>
           </div>
 

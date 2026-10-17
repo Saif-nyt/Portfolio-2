@@ -92,7 +92,8 @@
     "related": [
       "shopify-commerce-experience",
       "high-impact-landing-page"
-    ]
+    ],
+    "kind": "concept"
   },
   {
     "slug": "shopify-commerce-experience",
@@ -172,7 +173,8 @@
     "related": [
       "premium-ecommerce-storefront",
       "high-impact-landing-page"
-    ]
+    ],
+    "kind": "concept"
   },
   {
     "slug": "conversion-tracking-architecture",
@@ -263,7 +265,8 @@
     "related": [
       "full-stack-business-dashboard",
       "premium-ecommerce-storefront"
-    ]
+    ],
+    "kind": "concept"
   },
   {
     "slug": "full-stack-business-dashboard",
@@ -351,7 +354,8 @@
     "related": [
       "conversion-tracking-architecture",
       "immersive-creative-portfolio"
-    ]
+    ],
+    "kind": "concept"
   },
   {
     "slug": "high-impact-landing-page",
@@ -450,7 +454,8 @@
     "related": [
       "shopify-commerce-experience",
       "conversion-tracking-architecture"
-    ]
+    ],
+    "kind": "concept"
   },
   {
     "slug": "immersive-creative-portfolio",
@@ -536,6 +541,7 @@
     "related": [
       "full-stack-business-dashboard",
       "high-impact-landing-page"
-    ]
+    ],
+    "kind": "concept"
   }
 ]

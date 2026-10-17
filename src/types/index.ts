@@ -19,6 +19,12 @@ export interface ProjectSection {
   body: string[];
 }
 
+/** How honest framing of a project: real client work, concept, or demo. */
+export type ProjectKind = "actual" | "concept" | "demo";
+
+/** Runtime list mirroring ProjectKind — used by API validation. */
+export const PROJECT_KIND_IDS = ["actual", "concept", "demo"] as const satisfies readonly ProjectKind[];
+
 export interface Project {
   slug: string;
   index: string;
@@ -26,6 +32,8 @@ export interface Project {
   category: ProjectCategory;
   alsoIn?: ProjectCategory[];
   categoryLabel: string;
+  /** Distinguishes actual work from concept projects and demos. Defaults to "concept". */
+  kind?: ProjectKind;
   stack: string[];
   summary: string;
   /** Optional cover image URL (served from /media/) — falls back to generated artwork. */

@@ -74,10 +74,10 @@ export function ServiceCard({ service, detailed = false, index = 0 }: ServiceCar
         ) : null}
 
         <Link
-          href="/contact"
+          href={`/contact?service=${encodeURIComponent(service.slug)}`}
           className="mt-auto inline-flex items-center gap-2 rounded-full font-display text-sm text-ink transition group-hover:text-accent"
         >
-          Discuss Your Project
+          Discuss This Service
           <ArrowUpRight
             className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
             aria-hidden="true"

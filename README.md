@@ -52,6 +52,8 @@ without any of them.
 | `CONTACT_TO_EMAIL` | Inquiry delivery address | `saifulislamnyt@gmail.com` |
 | `CONTACT_FROM_EMAIL` | Sender identity | `Portfolio Website <onboarding@resend.dev>` |
 | `CONTACT_REPLY_TO` | Fixed reply-to header | visitor's own email |
+| `META_TEST_MODE` | Unlocks the CAPI dry-run endpoint `POST /api/meta/test` (validates an event, echoes what would be sent — never contacts Meta) | unset → endpoint answers `404` |
+| `META_PIXEL_ID` | Pixel id echoed in the dry-run response | `YOUR_PIXEL_ID` |
 
 Set `NEXT_PUBLIC_SITE_URL` to the real production origin before deploying so canonical
 links and the sitemap are correct.
@@ -103,12 +105,17 @@ timing-safe Bearer guard on every write.
 | POST | `/api/media` | Bearer | multipart `file=` field; jpeg/png/webp/avif/gif/svg, ≤ 5 MB → `201 { media }` |
 | DELETE | `/api/media/:file` | Bearer | `204` |
 | GET | `/media/:file` | public | serves `data/media/` with `nosniff` + `CSP: sandbox` + long cache |
+| GET | `/api/products` | public | sample catalog proxy in front of DummyJSON (60s in-memory cache; `?limit=` 1–20); every payload tagged `source: "dummyjson"` |
+| POST | `/api/meta/test` | gated | CAPI dry-run — validates an event and echoes the request body that would be sent to Meta; `404` unless `META_TEST_MODE=1`; never contacts Meta |
 
 Error envelope: `503 admin_disabled` (no `ADMIN_API_TOKEN`), `401 unauthorized`,
 `400 invalid_json` / `invalid_category` / `slug_immutable` / `invalid_filename`,
 `404 not_found`, `409 slug_exists` / `duplicate_id`, `413 file_too_large`,
 `415 unsupported_media_type`, `422 validation_failed` + `details: [{ path, message }]`,
 `503 storage_readonly` (upload on a read-only filesystem).
+
+A read-only operations dashboard for the JSON store (counts, recent entries, API map, sample
+catalog demo) lives at `/dashboard` (noindex).
 
 ```bash
 export ADMIN_API_TOKEN=$(grep ADMIN_API_TOKEN .env.local | cut -d= -f2)

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/animations/Reveal";
 import { ContactForm } from "@/components/contact/ContactForm";
@@ -128,7 +129,10 @@ export default function ContactPage() {
 
           <Reveal delay={0.08}>
             <div className="panel rounded-3xl p-6 sm:p-8">
-              <ContactForm />
+              {/* ContactForm reads ?service= via useSearchParams — Suspense required. */}
+              <Suspense fallback={<div className="h-[28rem] animate-pulse rounded-2xl bg-accentsoft/40" />}>
+                <ContactForm />
+              </Suspense>
             </div>
           </Reveal>
         </div>

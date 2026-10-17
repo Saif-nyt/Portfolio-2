@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Reveal } from "@/components/animations/Reveal";
+import { GameMount } from "@/components/game/GameMount";
 import { ArticleCard } from "@/components/insights/ArticleCard";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { AboutPreview } from "@/components/sections/AboutPreview";
@@ -32,6 +33,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <GameMount />
       <Hero />
       <AboutPreview />
       <SkillsEcosystem groups={skillGroups} />

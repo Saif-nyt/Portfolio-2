@@ -3,6 +3,7 @@
 import { ChevronDown, Send } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { submitInquiry } from "@/app/contact/actions";
 import type { ContactFormState } from "@/lib/contact";
 import { SITE } from "@/lib/site";
@@ -18,6 +19,16 @@ const serviceOptions = [
   "E-commerce Growth Solutions",
   "Something else",
 ];
+
+/** Maps ?service=<slug> query params (from service cards) to option labels. */
+const serviceLabelBySlug: Record<string, string> = {
+  "full-stack-web-development": "Full-Stack Web Development",
+  "wordpress-development": "WordPress Development",
+  "shopify-development": "Shopify Development",
+  "meta-ads-marketing": "Meta Ads Marketing",
+  "server-side-tracking": "Server-Side Tracking & Conversion API",
+  "ecommerce-growth-solutions": "E-commerce Growth Solutions",
+};
 
 const budgetOptions = ["Not sure yet", "Under $500", "$500 – $1,500", "$1,500 – $5,000", "$5,000+"];
 
@@ -125,9 +136,10 @@ function SelectField({
 interface ContactFormPanelProps {
   autoFocus: boolean;
   onSendAnother: () => void;
+  presetService?: string;
 }
 
-function ContactFormPanel({ autoFocus, onSendAnother }: ContactFormPanelProps) {
+function ContactFormPanel({ autoFocus, onSendAnother, presetService }: ContactFormPanelProps) {
   const [state, formAction, pending] = useActionState(submitInquiry, initialState);
   const startedAtRef = useRef<HTMLInputElement>(null);
 
@@ -271,7 +283,7 @@ function ContactFormPanel({ autoFocus, onSendAnother }: ContactFormPanelProps) {
             required
             options={serviceOptions}
             placeholder="Select a service"
-            defaultValue={values.service ?? ""}
+            defaultValue={values.service ?? presetService ?? ""}
             error={errors.service}
           />
 
@@ -347,12 +359,16 @@ function ContactFormPanel({ autoFocus, onSendAnother }: ContactFormPanelProps) {
 }
 
 export function ContactForm() {
+  const searchParams = useSearchParams();
+  const presetSlug = searchParams.get("service");
+  const presetService = presetSlug ? serviceLabelBySlug[presetSlug] : undefined;
   const [generation, setGeneration] = useState(0);
 
   return (
     <ContactFormPanel
       key={generation}
       autoFocus={generation > 0}
+      presetService={presetService}
       onSendAnother={() => setGeneration((current) => current + 1)}
     />
   );

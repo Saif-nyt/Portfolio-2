@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ApiError } from "@/server/api-error";
 import { readCollection, writeCollection } from "@/server/store";
-import { PROJECT_CATEGORY_IDS, type Project } from "@/types";
+import { PROJECT_CATEGORY_IDS, PROJECT_KIND_IDS, type Project } from "@/types";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const INDEX_PATTERN = /^\d{2,3}$/;
@@ -26,6 +26,7 @@ export const projectCreateSchema = z.object({
   category: z.enum(PROJECT_CATEGORY_IDS),
   alsoIn: z.array(z.enum(PROJECT_CATEGORY_IDS)).max(3).optional(),
   categoryLabel: nonEmpty(80),
+  kind: z.enum(PROJECT_KIND_IDS).default("concept"),
   stack: stringList(80, 20),
   summary: nonEmpty(400),
   image: z.string().min(1).max(500).nullable().default(null),

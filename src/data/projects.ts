@@ -7,3 +7,10 @@ export const projectCategories = [
   { id: "marketing", label: "Marketing" },
   { id: "tracking", label: "Tracking & Analytics" },
 ] as const;
+
+/** Display labels for project honesty framing. */
+export const PROJECT_KIND_LABELS = {
+  actual: "Actual Work",
+  concept: "Concept Project",
+  demo: "Demo",
+} as const;

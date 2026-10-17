@@ -973,6 +973,49 @@ svg .anim-pulse {
   animation: soft-blink-gentle var(--blink-dur, 5.2s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
+/* NEBULA game shell: intro sequencing + uplink loading bar. */
+@keyframes intro-line {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.game-intro-line {
+  animation: intro-line 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes player-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.player-bob {
+  animation: player-bob 0.5s ease-in-out infinite;
+}
+
+@keyframes uplink-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.uplink-bar > span {
+  animation: uplink-sweep 1.4s ease-in-out infinite;
+}
+
 /* Section ambience helpers */
 .scene-veil {
   background: linear-gradient(
@@ -1123,8 +1166,14 @@ svg .anim-pulse {
   .anim-bob,
   .anim-twinkle,
   .anim-blink,
-  .anim-blink-gentle {
+  .anim-blink-gentle,
+  .game-intro-line,
+  .player-bob {
     animation: none !important;
+  }
+  .uplink-bar > span {
+    animation: none !important;
+    transform: none !important;
   }
   .text-gradient {
     animation: none !important;

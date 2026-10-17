@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Reveal } from "@/components/animations/Reveal";
 import { Fireflies } from "@/components/ui/Fireflies";
 import { ProjectVisual } from "@/components/ui/ProjectVisual";
+import { PROJECT_KIND_LABELS } from "@/data/projects";
 import type { Project } from "@/types";
 
 interface ProjectCardProps {
@@ -24,7 +25,7 @@ export function ProjectCard({ project, featured = false, index = 0 }: ProjectCar
         >
           <ProjectVisual project={project} sizes={featured ? "(min-width: 640px) 50vw, 100vw" : "(min-width: 768px) 50vw, 100vw"} />
           <span className="absolute left-4 top-4 rounded-full border border-linestrong bg-[var(--veil)] px-3 py-1 font-mono text-[0.65rem] tracking-[0.16em] text-accent backdrop-blur-md">
-            CASE STUDY
+            {PROJECT_KIND_LABELS[project.kind ?? "concept"]}
           </span>
         </div>
 

@@ -3,6 +3,7 @@
 import { Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ACHIEVEMENT_EVENT, type Achievement } from "@/lib/game";
+import { playAchievement } from "@/lib/sound";
 
 const SEEN_KEY = "pandora:achievements";
 const KONAMI = [
@@ -53,6 +54,7 @@ export function AchievementToast() {
       const seen = readSeen();
       if (seen.includes(achievement.id)) return;
       markSeen(achievement.id);
+      playAchievement();
       setLeaving(false);
       setCurrent(achievement);
     };
