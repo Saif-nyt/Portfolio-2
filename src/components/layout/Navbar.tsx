@@ -73,7 +73,7 @@ export function Navbar() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
         scrolled || open
-          ? "border-b border-line bg-[var(--veil)] backdrop-blur-xl"
+          ? "border-b border-line bg-[var(--veil)] backdrop-blur-md"
           : "border-b border-transparent bg-transparent"
       }`}
     >
@@ -158,7 +158,7 @@ export function Navbar() {
         id="mobile-menu"
         ref={menuRef}
         hidden={!open}
-        className="border-t border-line bg-[var(--veil)] backdrop-blur-xl md:hidden"
+        className="border-t border-line bg-[var(--veil)] backdrop-blur-md md:hidden"
       >
         <nav aria-label="Mobile" className="shell py-6">
           <ul className="flex flex-col gap-1">

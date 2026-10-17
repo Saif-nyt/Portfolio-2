@@ -27,12 +27,34 @@ export function CursorWisp() {
     let targetScale = 1;
     let started = false;
     let frame = 0;
+    let running = false;
+    let lastTransform = "";
 
     const loop = () => {
       x += (targetX - x) * 0.18;
       y += (targetY - y) * 0.18;
       scale += (targetScale - scale) * 0.16;
-      outer.style.transform = `translate3d(${x - 13}px, ${y - 13}px, 0) scale(${scale.toFixed(3)})`;
+
+      const transform = `translate3d(${x - 13}px, ${y - 13}px, 0) scale(${scale.toFixed(3)})`;
+      if (transform !== lastTransform) {
+        outer.style.transform = transform;
+        lastTransform = transform;
+      }
+
+      if (
+        Math.abs(targetX - x) < 0.05 &&
+        Math.abs(targetY - y) < 0.05 &&
+        Math.abs(targetScale - scale) < 0.01
+      ) {
+        running = false;
+        return;
+      }
+      frame = requestAnimationFrame(loop);
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
       frame = requestAnimationFrame(loop);
     };
 
@@ -45,6 +67,7 @@ export function CursorWisp() {
         y = targetY;
         outer.classList.add("is-on");
       }
+      start();
     };
 
     const onOver = (event: PointerEvent) => {
@@ -53,15 +76,18 @@ export function CursorWisp() {
         target && typeof target.closest === "function"
           ? target.closest("a, button, [role='button']")
           : null;
-      targetScale = interactive ? 2.2 : 1;
+      const nextScale = interactive ? 2.2 : 1;
+      if (nextScale !== targetScale) {
+        targetScale = nextScale;
+        start();
+      }
     };
 
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerover", onOver, { passive: true });
-    frame = requestAnimationFrame(loop);
 
     return () => {
-      cancelAnimationFrame(frame);
+      if (running) cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerover", onOver);
     };
