@@ -8,7 +8,7 @@ export function MistLayer({ className = "" }: { className?: string }) {
       aria-hidden="true"
     >
       <span
-        className="anim-drift absolute -left-[20%] top-[14%] h-52 w-[75%] rounded-full blur-2xl"
+        className="anim-drift absolute -left-[20%] top-[14%] h-52 w-[75%] rounded-full blur-xl"
         style={withVars(
           {
             background:
@@ -18,7 +18,7 @@ export function MistLayer({ className = "" }: { className?: string }) {
         )}
       />
       <span
-        className="anim-drift absolute right-[10%] top-[42%] h-40 w-[60%] rounded-full blur-3xl"
+        className="anim-drift absolute right-[10%] top-[42%] h-40 w-[60%] rounded-full blur-2xl"
         style={withVars(
           {
             background:
@@ -28,7 +28,7 @@ export function MistLayer({ className = "" }: { className?: string }) {
         )}
       />
       <span
-        className="anim-drift absolute bottom-[6%] left-[24%] h-56 w-[70%] rounded-full blur-3xl"
+        className="anim-drift absolute bottom-[6%] left-[24%] h-56 w-[70%] rounded-full blur-2xl"
         style={withVars(
           {
             background:

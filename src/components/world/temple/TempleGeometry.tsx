@@ -10,9 +10,9 @@ import * as THREE from "three";
  */
 
 export function StoneMaterial({
-  color = "#1a2e2a",
-  emissive = "#0a1f1c",
-  emissiveIntensity = 0.15,
+  color = "#243b35",
+  emissive = "#163834",
+  emissiveIntensity = 0.35,
   roughness = 0.92,
 }: {
   color?: string;
@@ -45,12 +45,12 @@ export function Pillar({
     <group position={position}>
       <mesh position={[0, height / 2, 0]} castShadow>
         <cylinderGeometry args={[0.22, 0.3, height, 8]} />
-        <StoneMaterial color="#162824" />
+        <StoneMaterial color="#274039" />
       </mesh>
       {/* Base */}
       <mesh position={[0, 0.1, 0]}>
         <boxGeometry args={[0.7, 0.2, 0.7]} />
-        <StoneMaterial color="#12201d" />
+        <StoneMaterial color="#1f322d" />
       </mesh>
       {/* Glowing capital */}
       <mesh position={[0, height + 0.12, 0]}>
@@ -95,17 +95,17 @@ export function TempleDoor({
       {/* Left jamb */}
       <mesh position={[-1.35, 1.8, 0]} castShadow>
         <boxGeometry args={[0.5, 3.6, 0.6]} />
-        <StoneMaterial color="#152521" />
+        <StoneMaterial color="#22362f" />
       </mesh>
       {/* Right jamb */}
       <mesh position={[1.35, 1.8, 0]} castShadow>
         <boxGeometry args={[0.5, 3.6, 0.6]} />
-        <StoneMaterial color="#152521" />
+        <StoneMaterial color="#22362f" />
       </mesh>
       {/* Lintel */}
       <mesh position={[0, 3.85, 0]} castShadow>
         <boxGeometry args={[3.4, 0.55, 0.7]} />
-        <StoneMaterial color="#122019" />
+        <StoneMaterial color="#1d2f29" />
       </mesh>
       {/* Glowing threshold arch */}
       <mesh position={[0, 3.5, 0.05]}>
@@ -117,7 +117,7 @@ export function TempleDoor({
       <group ref={leftRef} position={[-1.1, 0, 0]}>
         <mesh position={[0.55, 1.7, 0]} castShadow>
           <boxGeometry args={[1.1, 3.4, 0.12]} />
-          <meshStandardMaterial color="#0e1c19" roughness={0.85} metalness={0.15} />
+          <meshStandardMaterial color="#182a25" roughness={0.85} metalness={0.15} />
         </mesh>
         {/* rune inlay */}
         <mesh position={[0.55, 1.9, 0.08]}>
@@ -130,7 +130,7 @@ export function TempleDoor({
       <group ref={rightRef} position={[1.1, 0, 0]}>
         <mesh position={[-0.55, 1.7, 0]} castShadow>
           <boxGeometry args={[1.1, 3.4, 0.12]} />
-          <meshStandardMaterial color="#0e1c19" roughness={0.85} metalness={0.15} />
+          <meshStandardMaterial color="#182a25" roughness={0.85} metalness={0.15} />
         </mesh>
         <mesh position={[-0.55, 1.9, 0.08]}>
           <ringGeometry args={[0.18, 0.24, 6]} />
@@ -147,15 +147,20 @@ export function TempleFloor({ width = 14, depth = 16 }: { width?: number; depth?
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[width, depth]} />
-        <meshStandardMaterial color="#0c1a17" roughness={0.95} />
+        <meshStandardMaterial
+          color="#152723"
+          emissive="#123a33"
+          emissiveIntensity={0.3}
+          roughness={0.95}
+        />
       </mesh>
       {/* Central path glow */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
         <planeGeometry args={[1.6, depth * 0.9]} />
         <meshStandardMaterial
-          color="#0a2320"
+          color="#0e2c28"
           emissive="#8fd8ff"
-          emissiveIntensity={0.35}
+          emissiveIntensity={0.7}
           roughness={0.8}
         />
       </mesh>
@@ -170,22 +175,22 @@ export function TempleWalls() {
       {/* Back wall */}
       <mesh position={[0, 2.5, -7]} castShadow receiveShadow>
         <boxGeometry args={[14, 5, 0.5]} />
-        <StoneMaterial color="#0f1d1a" />
+        <StoneMaterial color="#1b2e29" />
       </mesh>
       {/* Left wall */}
       <mesh position={[-7, 2.5, 0]} castShadow>
         <boxGeometry args={[0.5, 5, 14]} />
-        <StoneMaterial color="#0d1917" />
+        <StoneMaterial color="#182925" />
       </mesh>
       {/* Right wall */}
       <mesh position={[7, 2.5, 0]} castShadow>
         <boxGeometry args={[0.5, 5, 14]} />
-        <StoneMaterial color="#0d1917" />
+        <StoneMaterial color="#182925" />
       </mesh>
       {/* Ceiling beam suggestion */}
       <mesh position={[0, 5.1, 0]}>
         <boxGeometry args={[14.2, 0.3, 14.2]} />
-        <StoneMaterial color="#0a1513" />
+        <StoneMaterial color="#132421" />
       </mesh>
     </group>
   );

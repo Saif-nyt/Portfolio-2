@@ -65,12 +65,18 @@ export function TempleScene() {
       <SceneCanvas
         cameraPosition={POSES.approach.position}
         cameraFov={44}
-        background="#050d0c"
-        fog={{ color: "#07110f", density: 0.045 }}
+        background="#08130f"
+        fog={{ color: "#0c1c18", density: 0.03 }}
         animate
       >
-        <LightRig keyColor="#b8dce8" fillColor="#8fd8ff" intensity={0.85} />
+        <LightRig keyColor="#cfe9f2" fillColor="#8fd8ff" intensity={1.35} />
         <CameraDirector pose={pose} poses={POSES} reduced={reduced} />
+
+        {/* Interior fill — lifts the chamber just enough to read the stone,
+            the alcoves and the dais without losing the dark, ancient mood. */}
+        <ambientLight intensity={0.35} color="#bfe0dd" />
+        <pointLight position={[0, 3.9, -2]} intensity={16} distance={24} decay={2} color="#b6e2ea" />
+        <pointLight position={[0, 3.2, 4.5]} intensity={9} distance={18} decay={2} color={ACCENT} />
 
         <TempleFloor />
         <TempleWalls />
