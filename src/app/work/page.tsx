@@ -35,6 +35,19 @@ async function ProjectExplorerSection() {
 export default function WorkPage() {
   return (
     <VaultLocation
+      codex={
+        <Suspense
+          fallback={
+            <Section className="py-16 md:py-24" ariaLabelledBy="project-explorer-title">
+              <div className="shell">
+                <p className="text-dim">Loading projects…</p>
+              </div>
+            </Section>
+          }
+        >
+          <ProjectExplorerSection />
+        </Suspense>
+      }
       fallback={
         <>
           <PageHero

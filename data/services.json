@@ -8,7 +8,7 @@
     "accent": "cyan",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Build scope",
         "items": [
           "Frontend development",
           "Backend and API integration",
@@ -28,7 +28,7 @@
     "accent": "turquoise",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Site scope",
         "items": [
           "Business websites",
           "Landing pages",
@@ -49,7 +49,7 @@
     "accent": "mist",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Storefront scope",
         "items": [
           "Store setup and customization",
           "Theme customization",
@@ -69,7 +69,7 @@
     "accent": "cyan",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Campaign scope",
         "items": [
           "Campaign setup",
           "Campaign structure",
@@ -89,7 +89,7 @@
     "accent": "turquoise",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Tracking scope",
         "items": [
           "Meta Pixel integration",
           "Facebook Conversion API",
@@ -110,7 +110,7 @@
     "accent": "mist",
     "deliverables": [
       {
-        "title": "Scope",
+        "title": "Growth scope",
         "items": [
           "Storefront and funnel development",
           "Campaign structure and creative testing",

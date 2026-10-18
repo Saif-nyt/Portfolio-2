@@ -18,7 +18,6 @@ import {
   TempleWalls,
 } from "@/components/world/temple/TempleGeometry";
 import { worldActions } from "@/lib/world/store";
-import { revealAnchor } from "@/lib/mode";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 
 const ACCENT = "#8fd8ff";
@@ -106,7 +105,7 @@ export function TempleScene() {
               "Based in Bangladesh · working with clients worldwide",
             ],
             actions: [
-              { label: "Read full story", onClick: () => revealAnchor("about-introduction") },
+              { label: "Read full story", onClick: () => worldActions.openCodex("about") },
               { label: "Hire me", href: "/contact" },
             ],
           }}
@@ -177,6 +176,20 @@ export function TempleScene() {
         />
       </SceneCanvas>
 
+      {/* ---------- HUD ---------- */}
+      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: ACCENT }}>
+          ANCIENT TEMPLE · ABOUT
+        </p>
+        <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
+          The Story Behind the Build
+        </h1>
+        <p className="mt-2 max-w-md text-sm text-dim">
+          Approach the doorway, then step inside to meet the identity crystal, journey archive and
+          builder&apos;s philosophy.
+        </p>
+      </div>
+
       {/* ---------- DOM interaction layer ---------- */}
       {/* Primary entrance CTA — only while outside */}
       {pose === "approach" ? (
@@ -193,32 +206,32 @@ export function TempleScene() {
 
       {/* Interior navigation hints */}
       {pose === "interior" || pose === "philosophy" || pose === "journey" ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-20 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-16">
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
           <button
             type="button"
             onClick={() => setPose("interior")}
-            className="panel pointer-events-auto rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
           >
             Center
           </button>
           <button
             type="button"
             onClick={() => setPose("journey")}
-            className="panel pointer-events-auto rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
           >
             Journey →
           </button>
           <button
             type="button"
             onClick={() => setPose("philosophy")}
-            className="panel pointer-events-auto rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
           >
             ← Philosophy
           </button>
           <button
             type="button"
             onClick={exitTemple}
-            className="panel pointer-events-auto rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
           >
             Exit temple
           </button>

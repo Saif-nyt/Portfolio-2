@@ -10,9 +10,20 @@ const ObservatoryScene = dynamic(
   { ssr: false, loading: () => null },
 );
 
-export function ObservatoryLocation({ fallback }: { fallback: ReactNode }) {
+export function ObservatoryLocation({
+  fallback,
+  codex,
+}: {
+  fallback: ReactNode;
+  codex?: ReactNode;
+}) {
   return (
-    <WorldShell locationId="observatory" accent="#b39dff" fallbackContent={fallback}>
+    <WorldShell
+      locationId="observatory"
+      accent="#b39dff"
+      fallbackContent={fallback}
+      codexContent={codex}
+    >
       <ObservatoryScene />
     </WorldShell>
   );

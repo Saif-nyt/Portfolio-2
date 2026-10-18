@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ActiveObject } from "@/lib/world/store";
@@ -80,7 +81,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            className="panel relative z-10 flex max-h-[78dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-3xl p-6 sm:p-7"
+            className="panel pointer-events-auto relative z-10 flex max-h-[78dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-3xl p-6 sm:p-7"
             style={{ borderColor: `${accent}55`, boxShadow: `0 0 60px -18px ${accent}66` }}
           >
             <div className="flex items-start justify-between gap-4">
@@ -105,7 +106,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                 type="button"
                 onClick={() => worldActions.closePanel()}
                 aria-label="Close"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -131,16 +132,44 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
             {object.actions && object.actions.length > 0 ? (
               <div className="mt-1 flex flex-wrap gap-2.5">
                 {object.actions.map((action) => {
-                  const className =
-                    action.href && !action.onClick
-                      ? "btn-primary"
-                      : "btn-ghost";
+                  // Hide malformed actions instead of rendering dead controls.
+                  if (!action.href && !action.onClick) return null;
+
+                  const className = action.href && !action.onClick ? "btn-primary" : "btn-ghost";
                   const content = action.label;
+                  const isInternal = Boolean(action.href && !action.external && action.href.startsWith("/"));
+
+                  // Callback actions close the panel first so the visitor is
+                  // never left staring at a stale dialog over the result
+                  // (map opened, route changed, quick-mode reveal, …).
                   if (action.onClick && !action.href) {
                     return (
-                      <button key={action.label} type="button" onClick={action.onClick} className={className}>
+                      <button
+                        key={action.label}
+                        type="button"
+                        onClick={() => {
+                          worldActions.closePanel();
+                          action.onClick?.();
+                        }}
+                        className={className}
+                      >
                         {content}
                       </button>
+                    );
+                  }
+                  if (isInternal) {
+                    return (
+                      <Link
+                        key={action.label}
+                        href={action.href!}
+                        className={className}
+                        onClick={() => {
+                          worldActions.closePanel();
+                          action.onClick?.();
+                        }}
+                      >
+                        {content}
+                      </Link>
                     );
                   }
                   return (
@@ -152,6 +181,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                       className={className}
                       onClick={() => {
                         if (!action.external) worldActions.closePanel();
+                        action.onClick?.();
                       }}
                     >
                       {content}

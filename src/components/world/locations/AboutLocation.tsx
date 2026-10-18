@@ -14,9 +14,15 @@ const TempleScene = dynamic(
  * the shared WorldShell; the conventional About content (passed from the
  * server page) remains the accessible / SEO / quick-mode fallback beneath it.
  */
-export function AboutLocation({ fallback }: { fallback: ReactNode }) {
+export function AboutLocation({
+  fallback,
+  codex,
+}: {
+  fallback: ReactNode;
+  codex?: ReactNode;
+}) {
   return (
-    <WorldShell locationId="temple" accent="#8fd8ff" fallbackContent={fallback}>
+    <WorldShell locationId="temple" accent="#8fd8ff" fallbackContent={fallback} codexContent={codex}>
       <TempleScene />
     </WorldShell>
   );

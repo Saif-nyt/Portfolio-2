@@ -30,6 +30,17 @@ const serviceLabelBySlug: Record<string, string> = {
   "ecommerce-growth-solutions": "E-commerce Growth Solutions",
 };
 
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/** Every slugified option label, so any `?service=` spelling can preset. */
+const serviceBySlug: Record<string, string> = Object.fromEntries(
+  serviceOptions.map((option) => [slugify(option), option]),
+);
+
 const budgetOptions = ["Not sure yet", "Under $500", "$500 – $1,500", "$1,500 – $5,000", "$5,000+"];
 
 const timelineOptions = ["Flexible", "ASAP", "Within 2 weeks", "Within a month", "1–3 months"];
@@ -361,7 +372,9 @@ function ContactFormPanel({ autoFocus, onSendAnother, presetService }: ContactFo
 export function ContactForm() {
   const searchParams = useSearchParams();
   const presetSlug = searchParams.get("service");
-  const presetService = presetSlug ? serviceLabelBySlug[presetSlug] : undefined;
+  const presetService = presetSlug
+    ? (serviceLabelBySlug[presetSlug] ?? serviceBySlug[slugify(presetSlug)])
+    : undefined;
   const [generation, setGeneration] = useState(0);
 
   return (

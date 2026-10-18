@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "@/lib/hooks";
 const ACCENT = "#63f5e7";
 
 const POSES: Record<string, CameraPose> = {
+  intro: { position: [0, 4.8, 15], lookAt: [0, 1.6, 0] },
   overview: { position: [0, 3.2, 10], lookAt: [0, 1.2, 0] },
   map: { position: [0, 2.2, 6.5], lookAt: [0, 1, 0] },
   temple: { position: [-2.5, 2, 5], lookAt: [-5, 1.5, 2] },
@@ -26,8 +27,8 @@ function ValleyPath() {
         <meshStandardMaterial color="#0a1815" roughness={0.95} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <planeGeometry args={[20, 1.4]} />
-        <meshStandardMaterial color="#0d2420" emissive={ACCENT} emissiveIntensity={0.3} />
+        <planeGeometry args={[20, 1.2]} />
+        <meshStandardMaterial color="#0a1a17" emissive={ACCENT} emissiveIntensity={0.14} />
       </mesh>
     </group>
   );
@@ -82,9 +83,9 @@ function MapPedestal() {
       </mesh>
       <mesh position={[0, 1.1, 0]}>
         <cylinderGeometry args={[0.55, 0.55, 0.1, 8]} />
-        <meshStandardMaterial color="#0d2824" emissive={ACCENT} emissiveIntensity={1.4} toneMapped={false} />
+        <meshStandardMaterial color="#0d2824" emissive={ACCENT} emissiveIntensity={1} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 1.5, 0]} color={ACCENT} intensity={4} distance={5} decay={2} />
+      <pointLight position={[0, 1.5, 0]} color={ACCENT} intensity={3} distance={5} decay={2} />
     </group>
   );
 }
@@ -117,12 +118,19 @@ function GlowCrystals({
  */
 export function ArrivalScene() {
   const reduced = usePrefersReducedMotion();
-  const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const [pose, setPose] = useState<keyof typeof POSES>(reduced ? "overview" : "intro");
+
+  // Opening dolly: start wide, ease into the hero framing just after mount.
+  useEffect(() => {
+    if (reduced) return;
+    const timer = window.setTimeout(() => setPose("overview"), 350);
+    return () => window.clearTimeout(timer);
+  }, [reduced]);
 
   return (
     <>
       <SceneCanvas
-        cameraPosition={POSES.overview.position}
+        cameraPosition={reduced ? POSES.overview.position : POSES.intro.position}
         cameraFov={46}
         background="#050d0c"
         fog={{ color: "#07110f", density: 0.04 }}
@@ -214,43 +222,58 @@ export function ArrivalScene() {
         />
       </SceneCanvas>
 
-      {/* Hero copy overlay */}
-      <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 text-center">
-        <p className="font-mono text-[0.62rem] tracking-[0.3em] text-accent uppercase">
-          NEBULA · THE DIGITAL FRONTIER
-        </p>
-        <h1 className="mt-4 max-w-2xl font-display text-3xl leading-[1.1] text-ink sm:text-5xl">
-          Building Digital Experiences Beyond the Ordinary.
-        </h1>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-dim sm:text-base">
-          I&apos;m Saiful — a full-stack web developer building modern websites, applications and
-          digital systems.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
-            100+ sites shipped
-          </span>
-          <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
-            1.5 years experience
-          </span>
-        </div>
-        <div className="pointer-events-auto mt-8 flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setPose("map");
-              worldActions.toggleMap(true);
-            }}
-            className="btn-primary"
-          >
-            Explore the World
-          </button>
-          <Link href="/work" className="btn-ghost">
-            Discover My Work
-          </Link>
-          <Link href="/contact" className="btn-ghost">
-            Hire Me
-          </Link>
+      {/* Scrim: keeps the headline readable where emissive props sit behind it */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(56% 52% at 50% 46%, color-mix(in srgb, var(--bg) 78%, transparent) 0%, color-mix(in srgb, var(--bg) 48%, transparent) 60%, transparent 84%)",
+        }}
+      />
+
+      {/* Hero copy overlay.
+          Padded clear of the navbar + world HUD on top and the location strip
+          at the bottom, so it centres inside the *available* band instead of
+          colliding with the chrome on short or narrow screens. */}
+      <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-32 pb-28 text-center sm:pt-36">
+        <div className="flex w-full max-w-2xl flex-col items-center gap-5 sm:gap-6">
+          <p className="font-mono text-[0.62rem] tracking-[0.3em] text-accent uppercase">
+            NEBULA · THE DIGITAL FRONTIER
+          </p>
+          <h1 className="max-w-2xl font-display text-3xl leading-[1.1] text-ink sm:text-5xl">
+            Building Digital Experiences Beyond the Ordinary.
+          </h1>
+          <p className="max-w-xl text-sm leading-relaxed text-dim sm:text-base">
+            I&apos;m Saiful — a full-stack web developer building modern websites, applications and
+            digital systems.
+          </p>
+          <div className="hidden flex-wrap items-center justify-center gap-3 sm:flex">
+            <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
+              100+ sites shipped
+            </span>
+            <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
+              1.5 years experience
+            </span>
+          </div>
+          <div className="pointer-events-auto mt-1 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setPose("map");
+                worldActions.toggleMap(true);
+              }}
+              className="btn-primary"
+            >
+              Explore the World
+            </button>
+            <Link href="/work" className="btn-ghost">
+              Discover My Work
+            </Link>
+            <Link href="/contact" className="btn-ghost">
+              Hire Me
+            </Link>
+          </div>
         </div>
       </div>
     </>

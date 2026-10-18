@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { worldActions, type ActiveObject } from "@/lib/world/store";
+import { usePrefersReducedMotion } from "@/lib/hooks";
 
 interface Hotspot3DProps {
   position: [number, number, number];
@@ -35,9 +36,13 @@ export function Hotspot3D({
   const ringRef = useRef<THREE.Mesh>(null);
   const orbRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
+  const reduced = usePrefersReducedMotion();
+  // Stable per-instance phase so a row of hotspots breathes out of sync.
+  const phase = useMemo(() => position[0] * 1.7 + position[2] * 0.9, [position]);
 
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime * pulse;
+    if (reduced) return;
+    const t = clock.elapsedTime * pulse + phase;
     if (ringRef.current) {
       ringRef.current.rotation.z = t * 0.5;
       const s = 1 + Math.sin(t * 2) * (hovered ? 0.09 : 0.04);
@@ -150,6 +155,8 @@ export function CameraDirector({
   reduced?: boolean;
 }) {
   const { camera } = useThree();
+  const prefersReduced = usePrefersReducedMotion();
+  const isReduced = reduced || prefersReduced;
   const targetPos = useMemo(() => new THREE.Vector3(), []);
   const targetLook = useMemo(() => new THREE.Vector3(), []);
   const currentLook = useMemo(() => new THREE.Vector3(0, 1, 0), []);
@@ -160,7 +167,7 @@ export function CameraDirector({
     targetPos.set(config.position[0], config.position[1], config.position[2]);
     targetLook.set(config.lookAt[0], config.lookAt[1], config.lookAt[2]);
     const dt = Math.min(delta, 0.05);
-    if (reduced) {
+    if (isReduced) {
       camera.position.copy(targetPos);
       currentLook.copy(targetLook);
     } else {

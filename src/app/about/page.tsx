@@ -15,6 +15,17 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <AboutLocation
+      codex={
+        <Suspense
+          fallback={
+            <section className="shell py-20 md:py-28" aria-busy="true">
+              <p className="text-dim">Loading background…</p>
+            </section>
+          }
+        >
+          <AboutDetails />
+        </Suspense>
+      }
       fallback={
         <>
           <PageHero

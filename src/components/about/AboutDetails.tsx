@@ -2,6 +2,7 @@ import { Reveal, Stagger, StaggerItem } from "@/components/animations/Reveal";
 import { ActionLink } from "@/components/ui/ActionLink";
 import { Section } from "@/components/ui/Section";
 import Image from "next/image";
+import { SITE } from "@/lib/site";
 import { getCachedSettings } from "@/server/content-cache";
 
 const introduction =
@@ -10,7 +11,10 @@ const introduction =
 const focus =
   "I enjoy understanding how technology, customer experience, and marketing work together. My focus is building digital experiences that look distinctive, function reliably, and help businesses make better decisions.";
 
-const facts = ["1.5 years of experience", "100+ WordPress websites completed"];
+const facts = [
+  `${SITE.experience} of experience`,
+  `${SITE.projectsCompleted} WordPress websites completed`,
+];
 
 export async function AboutDetails() {
   const { aboutCapabilities, avatar } = await getCachedSettings();

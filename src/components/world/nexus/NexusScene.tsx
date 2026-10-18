@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
-import { revealAnchor } from "@/lib/mode";
+import { worldActions } from "@/lib/world/store";
 import { SITE } from "@/lib/site";
 
 const ACCENT = "#ff8fb3";
@@ -98,8 +98,8 @@ export function NexusScene() {
             title: "Start a project",
             body: "Tell me what you're building, what you want to improve, or where you're looking to grow. I'll reply with an honest read on scope and the smartest place to start.",
             actions: [
-              { label: "Open contact form", onClick: () => revealAnchor("form") },
-              { label: "Skip to quick options", onClick: () => revealAnchor("channels") },
+              { label: "Open contact form", onClick: () => worldActions.openCodex("contact") },
+              { label: "See direct channels", onClick: () => worldActions.openCodex("contact") },
             ],
           }}
         />
@@ -147,7 +147,7 @@ export function NexusScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center px-6 text-center">
+      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
         <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: ACCENT }}>
           COMMUNICATION NEXUS · CONTACT
         </p>
@@ -159,13 +159,13 @@ export function NexusScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 sm:bottom-16 flex flex-wrap justify-center gap-2 px-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
         {(["overview", "terminal", "beacon", "email"] as const).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setPose(p)}
-            className="panel pointer-events-auto rounded-full px-3 py-1.5 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
           >
             {p}
           </button>

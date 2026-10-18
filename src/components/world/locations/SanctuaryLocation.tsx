@@ -10,9 +10,20 @@ const SanctuaryScene = dynamic(
   { ssr: false, loading: () => null },
 );
 
-export function SanctuaryLocation({ fallback }: { fallback: ReactNode }) {
+export function SanctuaryLocation({
+  fallback,
+  codex,
+}: {
+  fallback: ReactNode;
+  codex?: ReactNode;
+}) {
   return (
-    <WorldShell locationId="sanctuary" accent="#ffd36b" fallbackContent={fallback}>
+    <WorldShell
+      locationId="sanctuary"
+      accent="#ffd36b"
+      fallbackContent={fallback}
+      codexContent={codex}
+    >
       <SanctuaryScene />
     </WorldShell>
   );

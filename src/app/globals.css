@@ -337,7 +337,7 @@
     position: fixed;
     inset: 0 0 auto 0;
     height: 3px;
-    z-index: 60;
+    z-index: 75;
     background: linear-gradient(90deg, var(--accent-strong), var(--cyan), var(--turquoise));
     background-size: 200% 100%;
     animation: gradient-shimmer 6s ease-in-out infinite alternate;
@@ -1239,4 +1239,52 @@ svg .anim-pulse {
   .skills-static {
     display: grid;
   }
+}
+
+/* ------------------------------------------------------------------
+   In-world mode: the 3D scene owns the viewport. Hide the conventional
+   footer so scrolling a world location never reveals a standard
+   portfolio page underneath the game.
+------------------------------------------------------------------- */
+body.in-world > footer {
+  display: none;
+}
+
+/* ------------------------------------------------------------------
+   Codex overlay body: deep content is authored as full-page sections
+   (py-20 shells, tinted panels). Inside the codex panel those paddings
+   and tints would leave cavernous gaps — neutralize them so content
+   reads as one continuous archive scroll.
+------------------------------------------------------------------- */
+.codex-body {
+  padding: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .codex-body {
+    padding: 1.5rem 1.75rem;
+  }
+}
+
+.codex-body .shell {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.codex-body section {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.codex-body > * + * {
+  margin-top: 1.25rem;
+}
+
+.codex-body .panel {
+  background: var(--panel);
 }

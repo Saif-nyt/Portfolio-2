@@ -35,9 +35,15 @@ async function ServicesBody() {
             />
           </Reveal>
           <div className="grid gap-6 lg:grid-cols-2">
-            {services.map((service, index) => (
-              <ServiceCard key={service.slug} service={service} detailed index={index} />
-            ))}
+            {services.length > 0 ? (
+              services.map((service, index) => (
+                <ServiceCard key={service.slug} service={service} detailed index={index} />
+              ))
+            ) : (
+              <p role="status" className="panel rounded-3xl p-10 text-center text-dim lg:col-span-2">
+                Service details are being finalised — check back shortly.
+              </p>
+            )}
           </div>
         </div>
       </Section>

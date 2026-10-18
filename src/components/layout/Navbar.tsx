@@ -74,7 +74,7 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-0 z-[70] transition-all duration-300 ${
         scrolled || open
           ? "border-b border-line bg-[var(--veil)] backdrop-blur-md"
           : "border-b border-transparent bg-transparent"
@@ -137,12 +137,12 @@ export function Navbar() {
               <Compass className="h-4 w-4" aria-hidden="true" />
             </Link>
             <ThemeToggle />
-            <a
-              href="mailto:saifulislamnyt@gmail.com"
+            <Link
+              href="/contact"
               className="btn-primary hidden !min-h-[2.5rem] !px-5 text-sm lg:inline-flex"
             >
               Start a Project
-            </a>
+            </Link>
           </div>
         </nav>
 
@@ -206,9 +206,9 @@ export function Navbar() {
               );
             })}
           </ul>
-          <a href="mailto:saifulislamnyt@gmail.com" className="btn-primary mt-6 w-full">
+          <Link href="/contact" onClick={closeMenu} className="btn-primary mt-6 w-full">
             Start a Project
-          </a>
+          </Link>
         </nav>
       </div>
     </header>

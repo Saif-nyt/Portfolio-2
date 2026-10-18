@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+export type ResourceStatus = "loading" | "ready" | "error";
+
+export interface Resource<T> {
+  data: T[];
+  status: ResourceStatus;
+  /** Re-runs the request — used by error/retry states. */
+  reload: () => void;
+}
 
 export interface ProjectSummary {
   slug: string;
@@ -11,6 +20,11 @@ export interface ProjectSummary {
   stack?: string[];
   summary: string;
   kind?: string;
+  accent?: string;
+  tools?: string[];
+  services?: string[];
+  role?: string;
+  results?: string | null;
 }
 
 export interface ArticleSummary {
@@ -29,51 +43,67 @@ export interface ArticleSummary {
  * Client-side content fetchers for the3D location scenes. The conventional
  * pages still server-render the same data; these hooks only run inside the
  * explore-mode canvas so they never block first paint.
+ *
+ * Every list endpoint answers `{ items, pagination }` — read `items` first
+ * and fall back to legacy collection keys so a shape change can never leave
+ * a scene silently empty.
  */
-export function useProjects(): ProjectSummary[] {
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+function pickList<T>(data: unknown, key: string): T[] {
+  if (Array.isArray(data)) return data as T[];
+  const record = data as Record<string, unknown> | null;
+  const items = record?.items ?? record?.[key];
+  return Array.isArray(items) ? (items as T[]) : [];
+}
+
+/**
+ * Shared client fetch with an explicit lifecycle so scenes can distinguish
+ * "still loading", "loaded but empty" and "failed" instead of silently
+ * rendering an empty room. `key` is the legacy collection key some endpoints
+ * used before the `{ items }` shape.
+ */
+function useResource<T>(url: string, key: string): Resource<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [status, setStatus] = useState<ResourceStatus>("loading");
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/projects")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load projects"))))
-      .then((data: { projects?: ProjectSummary[] } | ProjectSummary[]) => {
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((payload: unknown) => {
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : (data.projects ?? []);
-        setProjects(list);
+        setData(pickList<T>(payload, key));
+        setStatus("ready");
       })
       .catch(() => {
-        // Silent — the conventional fallback content below the scene still works.
+        if (!cancelled) setStatus("error");
       });
     return () => {
       cancelled = true;
     };
+  }, [url, key, nonce]);
+
+  // Status flips back to "loading" from here (an event), never synchronously
+  // inside the effect body — that would cascade renders.
+  const reload = useCallback(() => {
+    setStatus("loading");
+    setNonce((value) => value + 1);
   }, []);
 
-  return projects;
+  return { data, status, reload };
+}
+
+export function useProjectsResource(): Resource<ProjectSummary> {
+  return useResource<ProjectSummary>("/api/projects?limit=24", "projects");
+}
+
+/** Convenience array-only view (kept for scenes that don't need status). */
+export function useProjects(): ProjectSummary[] {
+  return useProjectsResource().data;
 }
 
 export function useArticles(): ArticleSummary[] {
-  const [articles, setArticles] = useState<ArticleSummary[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/articles")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load articles"))))
-      .then((data: { articles?: ArticleSummary[] } | ArticleSummary[]) => {
-        if (cancelled) return;
-        const list = Array.isArray(data) ? data : (data.articles ?? []);
-        setArticles(list);
-      })
-      .catch(() => {
-        // Silent fallback.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return articles;
+  return useResource<ArticleSummary>("/api/articles", "articles").data;
 }
 
 export function useServices(): Array<{
@@ -84,35 +114,12 @@ export function useServices(): Array<{
   description?: string;
   deliverables?: Array<{ title: string; items: string[] }>;
 }> {
-  const [services, setServices] = useState<
-    Array<{
-      slug: string;
-      number?: string;
-      title: string;
-      short?: string;
-      description?: string;
-      deliverables?: Array<{ title: string; items: string[] }>;
-    }>
-  >([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/services")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load services"))))
-      .then((data: unknown) => {
-        if (cancelled) return;
-        const list = Array.isArray(data)
-          ? data
-          : ((data as { services?: typeof services })?.services ?? []);
-        setServices(list);
-      })
-      .catch(() => {
-        // Silent fallback.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return services;
+  return useResource<{
+    slug: string;
+    number?: string;
+    title: string;
+    short?: string;
+    description?: string;
+    deliverables?: Array<{ title: string; items: string[] }>;
+  }>("/api/services", "services").data;
 }

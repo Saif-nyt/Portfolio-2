@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
+import { worldActions } from "@/lib/world/store";
 
 const ACCENT = "#b39dff";
 
@@ -350,6 +351,9 @@ export function ObservatoryScene() {
                 title: node.panel.title,
                 body: node.panel.body,
                 bullets: node.panel.bullets,
+                actions: [
+                  { label: "Open the full skills map", onClick: () => worldActions.openCodex("skills") },
+                ],
               }}
             />
           </group>
@@ -357,7 +361,7 @@ export function ObservatoryScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center px-6 text-center">
+      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
         <p className="font-mono text-[0.6rem] tracking-[0.28em] text-accent uppercase">
           HOLOGRAPHIC OBSERVATORY · SKILLS
         </p>
@@ -369,13 +373,13 @@ export function ObservatoryScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 sm:bottom-16 flex flex-wrap justify-center gap-2 px-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
         {(["overview", "core", "left", "right"] as const).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setPose(p)}
-            className="panel pointer-events-auto rounded-full px-3 py-1.5 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
           >
             {p}
           </button>

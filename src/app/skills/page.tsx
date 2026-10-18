@@ -28,6 +28,19 @@ async function CapabilitiesSection() {
 export default function SkillsPage() {
   return (
     <ObservatoryLocation
+      codex={
+        <Suspense
+          fallback={
+            <Section id="capabilities" ariaLabelledBy="capabilities-title">
+              <div className="shell py-12">
+                <p className="text-dim">Loading capabilities…</p>
+              </div>
+            </Section>
+          }
+        >
+          <CapabilitiesSection />
+        </Suspense>
+      }
       fallback={
         <>
           <PageHero

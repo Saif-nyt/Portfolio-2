@@ -9,9 +9,15 @@ const VaultScene = dynamic(
   { ssr: false, loading: () => null },
 );
 
-export function VaultLocation({ fallback }: { fallback: ReactNode }) {
+export function VaultLocation({
+  fallback,
+  codex,
+}: {
+  fallback: ReactNode;
+  codex?: ReactNode;
+}) {
   return (
-    <WorldShell locationId="vault" accent="#6bffd0" fallbackContent={fallback}>
+    <WorldShell locationId="vault" accent="#6bffd0" fallbackContent={fallback} codexContent={codex}>
       <VaultScene />
     </WorldShell>
   );

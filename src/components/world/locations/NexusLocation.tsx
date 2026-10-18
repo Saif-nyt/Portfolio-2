@@ -9,9 +9,15 @@ const NexusScene = dynamic(
   { ssr: false, loading: () => null },
 );
 
-export function NexusLocation({ fallback }: { fallback: ReactNode }) {
+export function NexusLocation({
+  fallback,
+  codex,
+}: {
+  fallback: ReactNode;
+  codex?: ReactNode;
+}) {
   return (
-    <WorldShell locationId="nexus" accent="#ff8fb3" fallbackContent={fallback}>
+    <WorldShell locationId="nexus" accent="#ff8fb3" fallbackContent={fallback} codexContent={codex}>
       <NexusScene />
     </WorldShell>
   );

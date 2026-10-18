@@ -261,6 +261,34 @@ function ImmersiveArt({ accent, rid }: ArtProps) {
   );
 }
 
+function GenericArt({ accent, rid }: ArtProps) {
+  return (
+    <g>
+      <rect x="24" y="64" width="752" height="86" rx="14" fill={`url(#glow-${rid})`} />
+      <rect x="48" y="86" width="300" height="18" rx="9" fill={MIST} fillOpacity="0.85" />
+      <rect x="48" y="116" width="188" height="9" rx="4.5" fill={MIST} fillOpacity="0.45" />
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <rect x={24 + i * 258} y="182" width="236" height="110" rx="14" fill={SURFACE} />
+          <rect x={36 + i * 258} y="194" width="212" height="52" rx="8" fill={RIDGE} fillOpacity="0.7" />
+          <rect
+            x={36 + i * 258}
+            y="258"
+            width={i % 2 === 0 ? 124 : 96}
+            height="9"
+            rx="4.5"
+            fill={MIST}
+            fillOpacity="0.5"
+          />
+        </g>
+      ))}
+      <rect x="24" y="318" width="752" height="88" rx="14" fill={PANEL} stroke={RIDGE} />
+      <rect x="48" y="352" width="220" height="10" rx="5" fill={MIST} fillOpacity="0.5" />
+      <circle cx="656" cy="362" r="16" fill={accent} fillOpacity="0.5" className="anim-pulse" />
+    </g>
+  );
+}
+
 function Interior({ project, accent, rid }: { project: Project; accent: string; rid: string }) {
   switch (project.slug) {
     case "premium-ecommerce-storefront":
@@ -276,7 +304,7 @@ function Interior({ project, accent, rid }: { project: Project; accent: string; 
     case "immersive-creative-portfolio":
       return <ImmersiveArt accent={accent} rid={rid} />;
     default:
-      return <rect x="24" y="64" width="752" height="362" rx="16" fill={SURFACE} />;
+      return <GenericArt accent={accent} rid={rid} />;
   }
 }
 

@@ -12,6 +12,64 @@ interface ArticleCardProps {
   titleAs?: "h2" | "h3";
 }
 
+/**
+ * Deterministic generated cover for articles that have no uploaded image —
+ * keeps every card visually complete without inventing a photograph.
+ */
+function GeneratedCover({ seed, label }: { seed: string; label: string }) {
+  const hash = Array.from(seed).reduce((total, char) => total + char.charCodeAt(0), 0);
+  const nodes = [0, 1, 2, 3, 4].map((i) => ({
+    x: 14 + ((hash + i * 37) % 72),
+    y: 20 + ((hash * (i + 2) + i * 53) % 58),
+  }));
+
+  return (
+    <svg
+      viewBox="0 0 800 450"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+      className="block h-full w-full"
+    >
+      <rect width="800" height="450" fill="#07110F" />
+      <g stroke="#63F5E7" strokeOpacity="0.08">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <line key={`v${i}`} x1={(i + 1) * 80} y1="0" x2={(i + 1) * 80} y2="450" />
+        ))}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <line key={`h${i}`} x1="0" y1={(i + 1) * 75} x2="800" y2={(i + 1) * 75} />
+        ))}
+      </g>
+      <g stroke="#63F5E7" strokeOpacity="0.35" strokeWidth="1.5">
+        {nodes.slice(0, -1).map((node, i) => (
+          <line key={i} x1={node.x * 8} y1={node.y * 5} x2={nodes[i + 1].x * 8} y2={nodes[i + 1].y * 5} />
+        ))}
+      </g>
+      {nodes.map((node, i) => (
+        <circle
+          key={i}
+          cx={node.x * 8}
+          cy={node.y * 5}
+          r={i === 0 ? 10 : 6}
+          fill={i === 0 ? "#63F5E7" : "#0B1B19"}
+          stroke="#63F5E7"
+          strokeOpacity="0.7"
+        />
+      ))}
+      <text
+        x="40"
+        y="410"
+        fill="#A3D9D6"
+        fillOpacity="0.5"
+        fontFamily="monospace"
+        fontSize="20"
+        letterSpacing="4"
+      >
+        {label.toUpperCase()}
+      </text>
+    </svg>
+  );
+}
+
 export function ArticleCard({
   article,
   featured = false,
@@ -32,7 +90,11 @@ export function ArticleCard({
               className="object-cover"
             />
           </div>
-        ) : null}
+        ) : (
+          <div className="relative -mx-6 -mt-6 aspect-[16/9] overflow-hidden border-b border-line sm:-mx-7 sm:-mt-7">
+            <GeneratedCover seed={article.slug} label={article.category} />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <span className="rounded-full border border-linestrong bg-accentsoft px-3 py-1 text-[0.7rem] tracking-[0.16em] text-accent uppercase">
             {article.category}

@@ -18,11 +18,16 @@ export interface ActiveObject {
   }>;
 }
 
+/** Deep-dive codex overlays — open in-world instead of ejecting to quick mode. */
+export type CodexSection = "about" | "skills" | "work" | "insights" | "contact";
+
 interface WorldState {
   /** Currently open holographic panel, if any. */
   activeObject: ActiveObject | null;
   /** Whether the world map overlay is open. */
   mapOpen: boolean;
+  /** Currently open codex overlay (deep content: story, skills, projects…), if any. */
+  codex: CodexSection | null;
   /** Reduced-effort rendering tier for weaker devices. */
   quality: RenderQuality;
 }
@@ -30,6 +35,7 @@ interface WorldState {
 let state: WorldState = {
   activeObject: null,
   mapOpen: false,
+  codex: null,
   quality: "high",
 };
 
@@ -52,7 +58,7 @@ function getSnapshot(): WorldState {
 
 // Cached so useSyncExternalStore sees a stable reference (a fresh object each
 // call triggers React's "getServerSnapshot should be cached" infinite-loop guard).
-const SERVER_STATE: WorldState = { activeObject: null, mapOpen: false, quality: "high" };
+const SERVER_STATE: WorldState = { activeObject: null, mapOpen: false, codex: null, quality: "high" };
 
 function getServerSnapshot(): WorldState {
   return SERVER_STATE;
@@ -61,7 +67,7 @@ function getServerSnapshot(): WorldState {
 /** Imperative actions — callable from3D callbacks without React state plumbing. */
 export const worldActions = {
   openPanel(object: ActiveObject) {
-    state = { ...state, activeObject: object };
+    state = { ...state, activeObject: object, mapOpen: false, codex: null };
     emit();
   },
   closePanel() {
@@ -72,7 +78,18 @@ export const worldActions = {
   toggleMap(open?: boolean) {
     const next = open ?? !state.mapOpen;
     if (next === state.mapOpen) return;
-    state = { ...state, mapOpen: next };
+    // Map replaces whatever else is open so only one overlay shows at a time.
+    state = { ...state, mapOpen: next, activeObject: next ? null : state.activeObject, codex: next ? null : state.codex };
+    emit();
+  },
+  openCodex(section: CodexSection) {
+    if (section === state.codex) return;
+    state = { ...state, codex: section, activeObject: null, mapOpen: false };
+    emit();
+  },
+  closeCodex() {
+    if (!state.codex) return;
+    state = { ...state, codex: null };
     emit();
   },
   setQuality(quality: RenderQuality) {

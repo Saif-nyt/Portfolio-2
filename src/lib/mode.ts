@@ -25,12 +25,30 @@ export function setStoredMode(mode: GameMode): void {
  * view. Explore mode unmounts the fallback DOM that owns ids like `#form`,
  * so any hotspot that targets an anchor must flip to quick mode first, then
  * scroll once React has mounted the content.
+ *
+ * The mount happens on a later frame than the mode broadcast, so the scroll
+ * is retried on animation frames for up to a second instead of firing once
+ * against an element that does not exist yet.
  */
 export function revealAnchor(id: string): void {
   setStoredMode("quick");
-  requestAnimationFrame(() => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const start = performance.now();
+
+  const attempt = () => {
+    const target = document.getElementById(id);
+    if (target) {
+      // Move keyboard focus with the viewport so the section is both seen
+      // and reachable without another Tab press.
+      if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      return;
+    }
+    if (performance.now() - start < 1200) requestAnimationFrame(attempt);
+  };
+
+  requestAnimationFrame(attempt);
 }
 
 function subscribe(callback: () => void): () => void {

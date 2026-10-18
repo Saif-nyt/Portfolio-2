@@ -1,9 +1,10 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { useWorldState } from "@/lib/world/store";
+import { usePrefersReducedMotion } from "@/lib/hooks";
 
 interface SceneCanvasProps {
   children: ReactNode;
@@ -26,9 +27,10 @@ function hasWebGL(): boolean {
 }
 
 /**
- * Shared browser-only3D canvas. Uses demand-based rendering: when `animate`
- * is false the frame loop idles, so static or panel-only moments cost ~nothing.
- * DPR adapts to the render-quality tier from the world store.
+ * Shared browser-only3D canvas. Demand-based by default: the loop runs
+ * continuously only while `animate` is true and nothing is covering the scene
+ * (no open panel/map, tab visible, motion allowed). DPR adapts to the
+ * render-quality tier from the world store.
  */
 export function SceneCanvas({
   children,
@@ -38,24 +40,33 @@ export function SceneCanvas({
   fog,
   animate = true,
 }: SceneCanvasProps) {
-  const { quality } = useWorldState();
+  const { quality, activeObject, mapOpen, codex } = useWorldState();
+  const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
+  const [tabHidden, setTabHidden] = useState(false);
 
-  // Pause rendering when the tab is hidden — saves battery and GPU.
+  // R3F keeps rendering when the tab is in the background — pause the loop.
   useEffect(() => {
-    if (!webglOk) return;
-    // R3F handles visibility internally via frameloop; nothing else needed.
-  }, [webglOk]);
+    const sync = () => setTabHidden(document.visibilityState === "hidden");
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
 
   if (!webglOk) return null;
 
   const dpr: [number, number] = quality === "high" ? [1, 1.75] : [0.85, 1.1];
+  // Idle loops (flora, rings, particles) run only when motion is welcome and
+  // nothing is covering the scene; a hidden tab, reduced-motion preference,
+  // open panel/map, or open codex all drop to on-demand frames.
+  const covered = Boolean(activeObject) || mapOpen || codex !== null;
+  const frameloop = animate && !reduced && !tabHidden && !covered ? "always" : "demand";
 
   return (
     <div aria-hidden="true" className="absolute inset-0">
       <Canvas
         dpr={dpr}
-        frameloop={animate ? "always" : "demand"}
+        frameloop={frameloop}
         gl={{
           antialias: quality === "high",
           powerPreference: "high-performance",

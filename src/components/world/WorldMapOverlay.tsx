@@ -73,7 +73,7 @@ export function WorldMapOverlay({
                 type="button"
                 onClick={() => worldActions.toggleMap(false)}
                 aria-label="Close map"
-                className="grid h-9 w-9 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
+                className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -111,7 +111,8 @@ export function WorldMapOverlay({
                     type="button"
                     onClick={() => onNavigate(location.id)}
                     aria-current={isCurrent ? "page" : undefined}
-                    className="group absolute -translate-x-1/2 -translate-y-1/2 focus-visible:outline-none"
+                    aria-label={`${location.title} — ${location.subtitle}`}
+                    className="group absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full focus-visible:outline-none"
                     style={{ left: `${location.mapX * 100}%`, top: `${location.mapY * 100}%` }}
                   >
                     <span
@@ -123,7 +124,7 @@ export function WorldMapOverlay({
                         boxShadow: isCurrent ? `0 0 14px ${location.accent}` : `0 0 8px ${location.accent}55`,
                       }}
                     />
-                    <span className="pointer-events-none absolute left-1/2 top-5 w-max -translate-x-1/2 rounded-md bg-bgdeep/90 px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-ink uppercase opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <span className="pointer-events-none absolute left-1/2 top-full hidden w-max -translate-x-1/2 rounded-md bg-bgdeep/90 px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-ink uppercase transition group-hover:opacity-100 group-focus-visible:opacity-100 sm:block sm:opacity-0">
                       {location.number} · {location.title}
                     </span>
                   </button>

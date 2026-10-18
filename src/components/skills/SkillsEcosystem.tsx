@@ -12,8 +12,10 @@ import type { SkillGroup } from "@/types";
  * which one is visible, so nothing depends on JS availability).
  */
 export function SkillsEcosystem({ groups }: { groups: SkillGroup[] }) {
-  const [activeId, setActiveId] = useState(groups[0].id);
+  const [activeId, setActiveId] = useState(groups[0]?.id ?? "");
   const active = groups.find((group) => group.id === activeId) ?? groups[0];
+
+  if (groups.length === 0 || !active) return null;
 
   return (
     <section

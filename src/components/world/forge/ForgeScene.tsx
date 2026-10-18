@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
+import { worldActions } from "@/lib/world/store";
 
 const ACCENT = "#ffb36b";
 
@@ -23,6 +24,8 @@ interface Station {
   title: string;
   problem: string;
   deliverables: string[];
+  /** Service option preset carried into the contact form. */
+  service: string;
 }
 
 const STATIONS: Station[] = [
@@ -31,6 +34,7 @@ const STATIONS: Station[] = [
     position: [-4, 0.9, -1],
     accent: "#63f5e7",
     title: "Full-Stack Web Applications",
+    service: "Full-Stack Web Development",
     problem:
       "You need a real application — auth, data, dashboards, workflows — not just a brochure site. I design the architecture and ship the whole thing.",
     deliverables: [
@@ -46,6 +50,7 @@ const STATIONS: Station[] = [
     position: [-1.4, 0.9, -1.5],
     accent: "#8fd8ff",
     title: "Frontend Development",
+    service: "Full-Stack Web Development",
     problem:
       "You have a design (or a clear idea) and need it built into a fast, responsive, accessible interface that feels polished on every device.",
     deliverables: [
@@ -61,6 +66,7 @@ const STATIONS: Station[] = [
     position: [1.4, 0.9, -1.5],
     accent: "#6bffd0",
     title: "Backend APIs & Databases",
+    service: "Full-Stack Web Development",
     problem:
       "Your product needs an API layer — endpoints, data models, integrations — that is reliable, typed and ready for the frontend to consume.",
     deliverables: [
@@ -76,6 +82,7 @@ const STATIONS: Station[] = [
     position: [4, 0.9, -1],
     accent: "#b39dff",
     title: "E-commerce Development",
+    service: "E-commerce Growth Solutions",
     problem:
       "You need a storefront that converts — fast product pages, clear navigation and a checkout path that doesn't lose people.",
     deliverables: [
@@ -91,6 +98,7 @@ const STATIONS: Station[] = [
     position: [0, 0.9, 1.5],
     accent: "#ffd36b",
     title: "Analytics & Tracking Integrations",
+    service: "Server-Side Tracking & Conversion API",
     problem:
       "Your ads and analytics are guessing. I wire browser and server-side events properly — named, deduplicated and validated — so decisions rest on real data.",
     deliverables: [
@@ -156,8 +164,11 @@ export function ForgeScene() {
   const router = useRouter();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
 
-  const discuss = (title: string) => {
-    router.push(`/contact?service=${encodeURIComponent(title)}`);
+  const discuss = (service: string) => {
+    // Travel to the nexus and open the contact codex on arrival — the world
+    // stays mounted; the form appears as an in-world overlay, not a page jump.
+    worldActions.openCodex("contact");
+    router.push(`/contact?service=${encodeURIComponent(service)}`);
   };
 
   return (
@@ -199,7 +210,7 @@ export function ForgeScene() {
                 actions: [
                   {
                     label: "Discuss this project",
-                    onClick: () => discuss(station.title),
+                    onClick: () => discuss(station.service),
                   },
                   {
                     label: "See all services",
@@ -213,7 +224,7 @@ export function ForgeScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex flex-col items-center px-6 text-center">
+      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
         <p className="font-mono text-[0.6rem] tracking-[0.28em] uppercase" style={{ color: ACCENT }}>
           TECHNOLOGY FORGE · SERVICES
         </p>
@@ -225,13 +236,13 @@ export function ForgeScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 sm:bottom-16 flex flex-wrap justify-center gap-2 px-4">
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
         {(["overview", "stations", "left", "right"] as const).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setPose(p)}
-            className="panel pointer-events-auto rounded-full px-3 py-1.5 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
           >
             {p}
           </button>
