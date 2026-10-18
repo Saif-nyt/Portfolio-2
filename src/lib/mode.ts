@@ -20,6 +20,19 @@ export function setStoredMode(mode: GameMode): void {
   window.dispatchEvent(new CustomEvent(MODE_CHANGE_EVENT));
 }
 
+/**
+ * Reveal the real (non-3D) page content and scroll an in-page anchor into
+ * view. Explore mode unmounts the fallback DOM that owns ids like `#form`,
+ * so any hotspot that targets an anchor must flip to quick mode first, then
+ * scroll once React has mounted the content.
+ */
+export function revealAnchor(id: string): void {
+  setStoredMode("quick");
+  requestAnimationFrame(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function subscribe(callback: () => void): () => void {
   const onStorage = (event: StorageEvent) => {
     if (event.key === `nebula:${MODE_KEY}` || event.key === null) callback();

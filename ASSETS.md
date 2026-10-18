@@ -1,49 +1,41 @@
 # NEBULA — Asset Inventory
 
-Every file in `public/nature/`, `public/models/` and `public/textures/` was
-downloaded and verified in this repository. Nothing here loads from a remote
-URL at runtime.
+As of the world rebuild, every interactive location is built from **procedural
+Three.js geometry** — no external GLB/HDR/texture files are loaded at runtime.
+This keeps the initial asset payload at ~0 MB beyond the JavaScript bundle and
+removes all third-party asset hosting concerns.
 
-## Explorer character
+## Current assets
 
-| File | Source | Author | License | Notes |
-| --- | --- | --- | --- | --- |
-| `public/models/soldier.glb` | [three.js examples — Soldier.glb](https://github.com/mrdoob/three.js/blob/dev/examples/models/gltf/Soldier.glb) | three.js project (model originally authored in Mixamo) | Model: Mixamo asset distributed with the MIT-licensed three.js repository. Adobe's Mixamo license permits royalty-free use in games and commercial projects. | Rigged humanoid with animation clips **Idle**, **Walk**, **Run**, **TPose**. 2.1 MB. Used as the explorer; materials are re-tinted at runtime toward the NEBULA palette. |
+| Asset | Source | License | Notes |
+| --- | --- | --- | --- |
+| _(none)_ | — | — | All scenes use in-code primitives: boxes, cylinders, spheres, tori, cones, octahedra and planes, tinted and emissive-shaded at runtime. |
 
-If a fully original cloaked-explorer GLB with idle/walk clips is later added,
-swap the path in `ExplorerCharacter.tsx` — the component contract stays the same.
+## Design rationale
 
-## Nature kit (vegetation, rocks, cliffs)
+The previous build loaded ~9 MB of models and textures up front (a rigged
+character, 15 nature GLBs, 11 sci-fi structures, an HDR sky and ground
+textures). That payload was the single largest cause of slow first
+interaction. The rebuild replaced all of it with lightweight procedural
+geometry:
 
-| Files | Source | Author | License | Notes |
-| --- | --- | --- | --- | --- |
-| `public/nature/*.glb` (26 files) | [Kenney Nature Kit](https://kenney.nl/assets/nature-kit) | Kenney ([kenney.nl](https://kenney.nl)) | **CC0 1.0** (public domain) | Low-poly stylized trees (dark variants), large/small rocks, mushrooms, bushes, grass tufts, flowers, logs, stumps and cliff blocks. GLB format, 3–31 KB each. Re-tinted at runtime toward deep teal / bioluminescent cyan. |
+- **Temple, Observatory, Forge, Vault, Sanctuary, Nexus, Arrival Valley** —
+  stone pillars, doors, floating crystals, workbenches, data tablets and
+  communication terminals are all built from Three.js primitives.
+- **Lighting** — ambient + hemisphere + two directional lights; no HDR
+  environment map, no shadow-casting lights by default.
+- **Atmosphere** — exponential fog + emissive materials for the bioluminescent
+  look, at a fraction of the cost of real-time IBL.
 
-## Sci-fi structures (outposts, pads, containers, alien rocks)
+## If external models are added later
 
-| Files | Source | Author | License | Notes |
-| --- | --- | --- | --- | --- |
-| `public/models/kaykit/*.gltf` + `*.bin` + `spacebits_texture.png` | [KayKit — Space Base Bits](https://github.com/KayKit-Game-Assets/KayKit-Space-Base-Bits-1.0) | Kay Lousberg (KayKit) | **CC0 1.0** (public domain) | Modular sci-fi pieces: base modules, landing pad, lander, cargo containers/depot, drill structure, lights, plus rock formations. GLTF + external BIN + one 25 KB atlas texture (26–81 KB per piece). |
+When a fitting CC0 asset is introduced, record it here with: name, source URL,
+author, license, local path under `public/`, and which location uses it. Prefer
+locally stored, compressed assets (draco/meshopt GLB, KTX2 textures) and load
+them only for the location that needs them via `next/dynamic`.
 
-## Environment (sky + lighting)
+Good CC0 sources:
 
-| File | Source | Author | License | Notes |
-| --- | --- | --- | --- | --- |
-| `public/environments/night_sky_1k.hdr` | [Poly Haven — Dikhololo Night](https://polyhaven.com/a/dikhololo_night) | Poly Haven | **CC0 1.0** | 1K HDR panorama: natural night sky with stars. Used as scene environment/background and image-based lighting. 1.7 MB. |
-
-## Terrain textures
-
-| File | Source | Author | License | Notes |
-| --- | --- | --- | --- | --- |
-| `public/textures/ground_diffuse.jpg`<br>`public/textures/ground_normal.jpg` | [Poly Haven — Aerial Grass Rock](https://polyhaven.com/a/aerial_grass_rock) | Poly Haven | **CC0 1.0** | Mossy grass-and-rock ground (1K JPG, ~0.7/0.9 MB). |
-| `public/textures/forest_diffuse.jpg`<br>`public/textures/forest_normal.jpg` | [Poly Haven — Brown Mud Rocks 01](https://polyhaven.com/a/brown_mud_rocks_01) | Poly Haven | **CC0 1.0** | Forest-floor mud and stones (1K JPG, ~0.9/1.4 MB). |
-
-## Runtime asset policy
-
-- All GLB/GLTF/HDR/JPG files are served from `public/` by this app — no
-  third-party hosts at runtime.
-- Procedural geometry (crystal nodes, portal rings, particles) is used only
-  for small supporting details where no fitting CC0 asset exists; it is built
-  from Three.js primitives inside the components, not from external files.
-- No Avatar movie assets were used. The bioluminescent look is an original
-  combination of the CC0 packs above with runtime material tinting.
+- [Poly Haven](https://polyhaven.com/) — HDRIs, textures, models
+- [Kenney](https://kenney.nl/assets) — low-poly game asset packs
+- [KayKit](https://kaylousberg.itch.io/) — sci-fi / modular structure packs

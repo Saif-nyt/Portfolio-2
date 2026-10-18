@@ -1,9 +1,8 @@
 import { Reveal, Stagger, StaggerItem } from "@/components/animations/Reveal";
 import { Section, SectionHeading } from "@/components/ui/Section";
-import { getCachedProcessSteps } from "@/server/content-cache";
+import type { ProcessStep } from "@/types";
 
-export async function ServiceProcess() {
-  const processSteps = await getCachedProcessSteps();
+export function ServiceProcess({ steps }: { steps: ProcessStep[] }) {
   return (
     <Section id="service-process" ariaLabelledBy="service-process-title" tone="panel">
       <div className="shell flex flex-col gap-12 py-20 md:py-28">
@@ -17,7 +16,7 @@ export async function ServiceProcess() {
         </Reveal>
 
         <Stagger className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" stagger={0.09}>
-          {processSteps.map((step) => (
+          {steps.map((step) => (
             <StaggerItem key={step.number} className="h-full">
               <article className="panel card-hover flex h-full flex-col gap-3 rounded-3xl p-6 sm:p-7">
                 <span className="font-mono text-xs tracking-[0.2em] text-accent">{step.number}</span>

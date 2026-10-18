@@ -21,6 +21,9 @@ import { SITE, SITE_URL } from "@/lib/site";
 import type { Project } from "@/types";
 
 export const ensureStatic = "navigation";
+// The whole case-study body depends on the awaited `params`, so this route
+// intentionally blocks on the server instead of streaming an App Shell.
+export const instant = false;
 
 export async function generateStaticParams() {
   const projects = await getAllProjects();

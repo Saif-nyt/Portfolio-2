@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   reactCompiler: true,
+  // Source maps crash Turbopack's emit stage on this toolchain; they are
+  // not needed for the live site and only slow production builds.
+  productionBrowserSourceMaps: false,
   turbopack: {
     rules: {
       "*.css": {

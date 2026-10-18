@@ -4,7 +4,6 @@ import { Compass, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { enterWorld } from "@/lib/game";
 import { NAV_LINKS } from "@/lib/site";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -70,17 +69,8 @@ export function Navbar() {
     [pathname],
   );
 
-  // On home, open the world in place; elsewhere, navigate to /?world=1.
-  const handleEnterWorld = useCallback(
-    (event: React.MouseEvent) => {
-      setOpen(false);
-      if (pathname === "/") {
-        event.preventDefault();
-        enterWorld();
-      }
-    },
-    [pathname],
-  );
+  // Close the mobile menu when a compass / map link is activated.
+  const closeMenu = useCallback(() => setOpen(false), []);
 
   return (
     <header
@@ -138,10 +128,10 @@ export function Navbar() {
           </ul>
           <div className="ml-2 flex items-center gap-2">
             <Link
-              href="/?world=1"
-              onClick={handleEnterWorld}
-              aria-label="Enter the Nebula world"
-              title="Enter the Nebula world"
+              href="/"
+              onClick={closeMenu}
+              aria-label="Return to Arrival Valley"
+              title="Arrival Valley"
               className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent focus-visible:outline-2"
             >
               <Compass className="h-4 w-4" aria-hidden="true" />
@@ -158,10 +148,10 @@ export function Navbar() {
 
         <div className="flex items-center gap-2 md:hidden">
           <Link
-            href="/?world=1"
-            onClick={handleEnterWorld}
-            aria-label="Enter the Nebula world"
-            title="Enter the Nebula world"
+            href="/"
+            onClick={closeMenu}
+            aria-label="Return to Arrival Valley"
+            title="Arrival Valley"
             className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent"
           >
             <Compass className="h-4 w-4" aria-hidden="true" />

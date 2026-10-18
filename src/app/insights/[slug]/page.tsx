@@ -17,6 +17,9 @@ interface ArticlePageProps {
 }
 
 export const ensureStatic = "navigation";
+// The whole article body depends on the awaited `params`, so this route
+// intentionally blocks on the server instead of streaming an App Shell.
+export const instant = false;
 
 export async function generateStaticParams() {
   const articles = await getAllArticles();
