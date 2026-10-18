@@ -19,7 +19,7 @@ export interface ActiveObject {
 }
 
 /** Deep-dive codex overlays — open in-world instead of ejecting to quick mode. */
-export type CodexSection = "about" | "skills" | "work" | "insights" | "contact";
+export type CodexSection = "about" | "skills" | "services" | "work" | "insights" | "contact";
 
 interface WorldState {
   /** Currently open holographic panel, if any. */

@@ -103,7 +103,11 @@ export function useProjects(): ProjectSummary[] {
 }
 
 export function useArticles(): ArticleSummary[] {
-  return useResource<ArticleSummary>("/api/articles", "articles").data;
+  return useArticlesResource().data;
+}
+
+export function useArticlesResource(): Resource<ArticleSummary> {
+  return useResource<ArticleSummary>("/api/articles", "articles");
 }
 
 export function useServices(): Array<{

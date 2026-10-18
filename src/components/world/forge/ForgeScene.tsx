@@ -214,7 +214,7 @@ export function ForgeScene() {
                   },
                   {
                     label: "See all services",
-                    href: "/services",
+                    onClick: () => worldActions.openCodex("services"),
                   },
                 ],
               }}

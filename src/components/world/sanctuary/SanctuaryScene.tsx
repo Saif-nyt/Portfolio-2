@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
-import { useArticles } from "@/lib/world/content-hooks";
+import { useArticlesResource } from "@/lib/world/content-hooks";
 import { worldActions } from "@/lib/world/store";
 
 const ACCENT = "#ffd36b";
@@ -57,7 +57,7 @@ const ARTICLE_ACCENTS = ["#ffd36b", "#8fd8ff", "#6bffd0", "#b39dff", "#ffb36b", 
  */
 export function SanctuaryScene() {
   const router = useRouter();
-  const articles = useArticles();
+  const { data: articles, status, reload } = useArticlesResource();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
 
   const visible = articles.slice(0, 6);
@@ -138,6 +138,28 @@ export function SanctuaryScene() {
         <p className="mt-2 max-w-md text-sm text-dim">
           Click a tablet to preview an article, then open the full reading view.
         </p>
+        {status === "loading" ? (
+          <p className="mt-3 font-mono text-[0.6rem] tracking-[0.18em] text-dim uppercase">
+            Loading field notes…
+          </p>
+        ) : null}
+        {status === "ready" && articles.length === 0 ? (
+          <p className="mt-3 font-mono text-[0.6rem] tracking-[0.18em] text-dim uppercase">
+            No field notes published yet.
+          </p>
+        ) : null}
+        {status === "error" ? (
+          <p className="pointer-events-auto mt-3 font-mono text-[0.6rem] tracking-[0.18em] text-dim uppercase">
+            Couldn&apos;t load field notes.{" "}
+            <button
+              type="button"
+              onClick={reload}
+              className="text-accent underline underline-offset-4"
+            >
+              Retry
+            </button>
+          </p>
+        ) : null}
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">

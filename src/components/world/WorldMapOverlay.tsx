@@ -73,7 +73,7 @@ export function WorldMapOverlay({
                 type="button"
                 onClick={() => worldActions.toggleMap(false)}
                 aria-label="Close map"
-                className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
+                className="grid h-11 w-11 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

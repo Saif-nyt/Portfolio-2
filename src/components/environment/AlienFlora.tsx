@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { withVars } from "@/lib/styles";
 
 interface Stem {
@@ -104,6 +105,7 @@ function StemShape({
  * Entirely static SVG animated with CSS — no client JS.
  */
 export function AlienFlora({ className = "" }: { className?: string }) {
+  const uid = useId().replace(/:/g, "");
   return (
     <svg
       className={`h-full w-full ${className}`}
@@ -113,12 +115,12 @@ export function AlienFlora({ className = "" }: { className?: string }) {
       focusable="false"
     >
       <defs>
-        <linearGradient id="flora-ground" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`flora-ground-${uid}`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#07110F" stopOpacity="0" />
           <stop offset="65%" stopColor="#07110F" stopOpacity="0.75" />
           <stop offset="100%" stopColor="#050C0B" stopOpacity="0.95" />
         </linearGradient>
-        <g id="flora-mound">
+        <g id={`flora-mound-${uid}`}>
           <ellipse cx="720" cy={HEIGHT} rx="820" ry="46" fill="#0B1B19" />
         </g>
       </defs>
@@ -136,7 +138,7 @@ export function AlienFlora({ className = "" }: { className?: string }) {
         ))}
       </g>
 
-      <use href="#flora-mound" opacity="0.9" />
+      <use href={`#flora-mound-${uid}`} opacity="0.9" />
 
       <g>
         {FRONT_STEMS.map((stem, index) => (
@@ -151,7 +153,7 @@ export function AlienFlora({ className = "" }: { className?: string }) {
         ))}
       </g>
 
-      <rect x="0" y={HEIGHT - 120} width="1440" height="120" fill="url(#flora-ground)" />
+      <rect x="0" y={HEIGHT - 120} width="1440" height="120" fill={`url(#flora-ground-${uid})`} />
     </svg>
   );
 }

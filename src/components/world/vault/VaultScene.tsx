@@ -106,9 +106,9 @@ export function VaultScene() {
 
   const positions = useMemo<[number, number, number][]>(() => {
     if (count === 0) return [];
-    const radius = portrait ? 2.6 : 4.2;
-    const spread = portrait ? Math.PI * 0.8 : Math.PI * 0.9;
-    const depth = portrait ? 1.4 : 2.2;
+    const radius = portrait ? 2.4 : 4.2;
+    const spread = portrait ? Math.PI * 0.6 : Math.PI * 0.9;
+    const depth = portrait ? 1.2 : 2.2;
     const baseZ = portrait ? -0.2 : -0.5;
     return visible.map((_, i) => {
       const t = count === 1 ? 0.5 : i / (count - 1);
@@ -121,10 +121,10 @@ export function VaultScene() {
     () =>
       portrait
         ? {
-            overview: { position: [0, 2.4, 13.5], lookAt: [0, 1.1, -1] },
-            close: { position: [0, 2.0, 9.5], lookAt: [0, 1.1, -1] },
-            left: { position: [-2.6, 2.1, 10.5], lookAt: [-2.2, 1.1, -1] },
-            right: { position: [2.6, 2.1, 10.5], lookAt: [2.2, 1.1, -1] },
+            overview: { position: [0, 2.4, 15], lookAt: [0, 1.1, -1] },
+            close: { position: [0, 2.0, 11.5], lookAt: [0, 1.1, -1] },
+            left: { position: [-2.6, 2.1, 12], lookAt: [-2.2, 1.1, -1] },
+            right: { position: [2.6, 2.1, 12], lookAt: [2.2, 1.1, -1] },
           }
         : {
             overview: { position: [0, 2.8, 9.5], lookAt: [0, 1.3, 0] },

@@ -106,7 +106,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                 type="button"
                 onClick={() => worldActions.closePanel()}
                 aria-label="Close"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

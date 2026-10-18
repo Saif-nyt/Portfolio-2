@@ -8,8 +8,8 @@ export const SITE = {
   phone: "+8801576483920",
   phoneDisplay: "+880 1576-483920",
   whatsappUrl:
-    "https://wa.me/8801576483920?text=Hey%20bro%2C%20you%20available%20to%20chat",
-  whatsappMessage: "Hey bro, you available to chat",
+    "https://wa.me/8801576483920?text=Hi%20Saiful%2C%20I%27d%20like%20to%20discuss%20a%20project.",
+  whatsappMessage: "Hi Saiful, I'd like to discuss a project.",
   experience: "1.5 years",
   projectsCompleted: "100+",
   languages: "English",
@@ -23,6 +23,7 @@ export const SITE_URL = (
 export const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
+  { href: "/skills", label: "Skills" },
   { href: "/services", label: "Services" },
   { href: "/work", label: "Work" },
   { href: "/insights", label: "Insights" },

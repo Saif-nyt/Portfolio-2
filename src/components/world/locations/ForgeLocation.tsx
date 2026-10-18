@@ -9,9 +9,14 @@ const ForgeScene = dynamic(
   { ssr: false, loading: () => null },
 );
 
-export function ForgeLocation({ fallback }: { fallback: ReactNode }) {
+export function ForgeLocation({ fallback, codex }: { fallback: ReactNode; codex?: ReactNode }) {
   return (
-    <WorldShell locationId="forge" accent="#ffb36b" fallbackContent={fallback}>
+    <WorldShell
+      locationId="forge"
+      accent="#ffb36b"
+      fallbackContent={fallback}
+      codexContent={codex}
+    >
       <ForgeScene />
     </WorldShell>
   );

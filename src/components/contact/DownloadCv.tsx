@@ -17,27 +17,27 @@ export function DownloadCv() {
         type="button"
         className="btn-ghost"
         aria-expanded={noteVisible}
+        aria-controls="download-cv-note"
         onClick={() => setNoteVisible((visible) => !visible)}
       >
         <Download className="h-4 w-4" aria-hidden="true" />
         Download CV
       </button>
-      {noteVisible ? (
-        <p
-          id="download-cv-note"
-          role="status"
-          className="max-w-sm text-sm leading-relaxed text-dim"
+      <p
+        id="download-cv-note"
+        role="status"
+        hidden={!noteVisible}
+        className="max-w-sm text-sm leading-relaxed text-dim"
+      >
+        The CV PDF hasn&apos;t been uploaded yet — email{" "}
+        <a
+          href={`mailto:${SITE.email}`}
+          className="text-accent underline underline-offset-4"
         >
-          The CV PDF hasn&apos;t been uploaded yet — email{" "}
-          <a
-            href={`mailto:${SITE.email}`}
-            className="text-accent underline underline-offset-4"
-          >
-            {SITE.email}
-          </a>{" "}
-          and I&apos;ll send it straight over.
-        </p>
-      ) : null}
+          {SITE.email}
+        </a>{" "}
+        and I&apos;ll send it straight over.
+      </p>
     </div>
   );
 }

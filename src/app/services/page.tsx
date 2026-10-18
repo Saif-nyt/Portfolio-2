@@ -55,6 +55,19 @@ async function ServicesBody() {
 export default function ServicesPage() {
   return (
     <ForgeLocation
+      codex={
+        <Suspense
+          fallback={
+            <Section id="services-list" ariaLabelledBy="services-list-title">
+              <div className="shell py-20 md:py-28">
+                <p className="text-dim">Loading services…</p>
+              </div>
+            </Section>
+          }
+        >
+          <ServicesBody />
+        </Suspense>
+      }
       fallback={
         <>
           <PageHero

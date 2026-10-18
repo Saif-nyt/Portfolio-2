@@ -67,7 +67,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className={`grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-ink transition hover:border-linestrong hover:text-accent ${className}`}
+      className={`grid h-11 w-11 place-items-center rounded-full border border-line bg-panel text-ink transition hover:border-linestrong hover:text-accent ${className}`}
     >
       {theme === "light" ? (
         <Moon className="h-[18px] w-[18px]" aria-hidden="true" />

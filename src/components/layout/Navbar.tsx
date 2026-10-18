@@ -108,7 +108,7 @@ export function Navbar() {
                     href={link.href}
                     onClick={() => setOpen(false)}
                     aria-current={active ? "page" : undefined}
-                    className={`relative block rounded-full px-4 py-2 font-display text-sm transition ${
+                    className={`relative inline-flex min-h-11 items-center rounded-full px-4 font-display text-sm transition ${
                       active
                         ? "text-accent"
                         : "text-dim hover:text-ink"
@@ -117,7 +117,7 @@ export function Navbar() {
                     {link.label}
                     <span
                       aria-hidden="true"
-                      className={`absolute inset-x-4 -bottom-0.5 h-px origin-left transition-transform duration-300 ${
+                      className={`absolute inset-x-4 bottom-1 h-px origin-left transition-transform duration-300 ${
                         active ? "scale-x-100 bg-accent shadow-[0_0_10px_rgba(99,245,231,0.9)]" : "scale-x-0 bg-transparent"
                       }`}
                     />
@@ -152,7 +152,7 @@ export function Navbar() {
             onClick={closeMenu}
             aria-label="Return to Arrival Valley"
             title="Arrival Valley"
-            className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent"
+            className="grid h-11 w-11 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent"
           >
             <Compass className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -160,7 +160,7 @@ export function Navbar() {
           <button
             ref={toggleRef}
             type="button"
-            className="grid h-10 w-10 place-items-center rounded-full border border-line bg-panel text-ink"
+            className="grid h-11 w-11 place-items-center rounded-full border border-line bg-panel text-ink"
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? "Close navigation menu" : "Open navigation menu"}

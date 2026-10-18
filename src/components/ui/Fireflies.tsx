@@ -12,7 +12,7 @@ export function Fireflies({ count = 5 }: FirefliesProps) {
   return (
     <span className="fireflies" aria-hidden="true">
       {Array.from({ length: count }, (_, index) => (
-        <span key={index} className={`firefly firefly--${(index % 3) + 1}`} />
+        <span key={index} className="firefly" />
       ))}
     </span>
   );

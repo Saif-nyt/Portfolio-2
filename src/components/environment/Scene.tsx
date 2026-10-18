@@ -27,7 +27,7 @@ export function Scene({ variant = "arrival", className = "" }: SceneProps) {
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
       aria-hidden="true"
     >
-      <div className={`absolute inset-0 scene-sky scene-sky-${variant}`} />
+      <div className={`absolute inset-0 scene-sky-${variant}`} />
       <div className="scene-sun" />
 
       <div

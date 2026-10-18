@@ -52,7 +52,7 @@ export function Particles({ className = "" }: { className?: string }) {
         );
       })}
       <span
-        className="anim-twinkle absolute right-[14%] top-[44%] hidden h-1.5 w-1.5 rounded-full bg-turquoise shadow-[0_0_16px_rgba(55,244,197,0.9)] md:block"
+        className="anim-twinkle absolute right-[14%] top-[44%] hidden h-1.5 w-1.5 rounded-full bg-turquoise shadow-[0_0_16px_rgba(55,214,197,0.9)] md:block"
         style={{ "--tw-dur": "13s", "--tw-x": "-7px", animationDelay: "1.4s" } as CSSProperties}
       />
       <span

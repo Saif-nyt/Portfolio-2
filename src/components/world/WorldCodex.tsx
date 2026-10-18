@@ -8,6 +8,7 @@ import { worldActions, type CodexSection } from "@/lib/world/store";
 const CODEX_META: Record<CodexSection, { eyebrow: string; title: string }> = {
   about: { eyebrow: "ARCHIVE RECORD · ABOUT", title: "The Full Story" },
   skills: { eyebrow: "CAPABILITY MAP · SKILLS", title: "The Ecosystem" },
+  services: { eyebrow: "SERVICE REGISTRY · SERVICES", title: "What I Build" },
   work: { eyebrow: "ARTIFACT INDEX · WORK", title: "All Projects" },
   insights: { eyebrow: "FIELD NOTES · INSIGHTS", title: "The Archive" },
   contact: { eyebrow: "NEXUS UPLINK · CONTACT", title: "Start a Project" },
@@ -84,7 +85,7 @@ export function WorldCodex({ section, accent = "#63f5e7", children }: WorldCodex
                 type="button"
                 onClick={() => worldActions.closeCodex()}
                 aria-label="Close and return to the world"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-ink"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

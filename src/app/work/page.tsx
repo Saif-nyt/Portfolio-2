@@ -26,6 +26,9 @@ async function ProjectExplorerSection() {
       className="py-16 md:py-24"
     >
       <div className="shell flex flex-col gap-10">
+        <h2 id="project-explorer-title" className="sr-only">
+          All projects
+        </h2>
         <ProjectExplorer projects={projects} />
       </div>
     </Section>

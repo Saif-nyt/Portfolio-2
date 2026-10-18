@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 async function CapabilitiesSection() {
   const groups = await getCachedSkillGroups();
   return (
-    <Section id="capabilities" ariaLabelledBy="capabilities-title">
+              <Section id="capabilities" ariaLabelledBy="skills-title">
       <div className="shell py-12">
         {groups.length > 0 ? <SkillsEcosystem groups={groups} /> : null}
       </div>
@@ -31,7 +31,7 @@ export default function SkillsPage() {
       codex={
         <Suspense
           fallback={
-            <Section id="capabilities" ariaLabelledBy="capabilities-title">
+            <Section id="capabilities" ariaLabelledBy="skills-title">
               <div className="shell py-12">
                 <p className="text-dim">Loading capabilities…</p>
               </div>
@@ -51,7 +51,7 @@ export default function SkillsPage() {
           />
           <Suspense
             fallback={
-              <Section id="capabilities" ariaLabelledBy="capabilities-title">
+    <Section id="capabilities" ariaLabelledBy="skills-title">
                 <div className="shell py-12">
                   <p className="text-dim">Loading capabilities…</p>
                 </div>
