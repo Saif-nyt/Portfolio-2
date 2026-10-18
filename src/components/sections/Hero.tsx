@@ -16,7 +16,7 @@ export function Hero() {
       <Scene variant="arrival" />
 
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 backdrop-blur-[2px]"
         aria-hidden="true"
         style={{
           background:
@@ -43,7 +43,7 @@ export function Hero() {
         </Reveal>
 
         <Reveal delay={0.24}>
-          <p className="max-w-2xl text-base leading-relaxed text-dim sm:text-lg">
+          <p className="max-w-2xl text-base leading-relaxed text-ink/85 sm:text-lg">
             I&apos;m T. M. Saiful Islam — a web developer and digital growth specialist helping
             businesses build better websites, strengthen their online presence, and measure what
             matters.
@@ -66,7 +66,7 @@ export function Hero() {
         <Reveal delay={0.44}>
           <p className="anim-bob flex flex-wrap items-center gap-x-3 gap-y-2 rounded-full border border-line bg-[var(--veil)] px-5 py-2.5 font-display text-xs text-dim backdrop-blur-md sm:text-sm">
             <span className="text-accent">
-              <CountUp value={SITE.projectsCompleted} /> WordPress Websites Completed
+              <CountUp value={SITE.projectsCompleted} /> Projects Completed
             </span>
             <span
               aria-hidden="true"

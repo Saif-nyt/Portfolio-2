@@ -186,7 +186,7 @@ const NODES: SkillNode[] = [
     panel: {
       eyebrow: "TOOLS · CMS",
       title: "WordPress",
-      body: "100+ WordPress sites shipped — custom themes, Elementor builds, WooCommerce stores and performance work for real businesses.",
+      body: "100+ projects shipped — custom themes, Elementor builds, WooCommerce stores and performance work for real businesses.",
       bullets: [
         "Custom and child theme development",
         "WooCommerce storefronts",

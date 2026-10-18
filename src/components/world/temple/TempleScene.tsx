@@ -101,7 +101,7 @@ export function TempleScene() {
             body: "Full-stack web developer and digital systems builder. I design and ship modern web applications — from marketing sites and storefronts to dashboards, APIs and measurement pipelines — with a bias toward clarity, performance and things that actually work in production.",
             bullets: [
               "1.5 years building and shipping real web projects",
-              "100+ WordPress websites delivered",
+              "100+ projects delivered",
               "Based in Bangladesh · working with clients worldwide",
             ],
             actions: [

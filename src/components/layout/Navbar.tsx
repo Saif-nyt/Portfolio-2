@@ -1,6 +1,7 @@
 "use client";
 
 import { Compass, Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -12,7 +13,7 @@ function subscribeToScroll(callback: () => void) {
   return () => window.removeEventListener("scroll", callback);
 }
 
-export function Navbar() {
+export function Navbar({ avatar = null }: { avatar?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -89,9 +90,20 @@ export function Navbar() {
         >
           <span
             aria-hidden="true"
-            className="grid h-9 w-9 place-items-center rounded-full border border-linestrong bg-accentsoft font-display text-sm font-semibold text-accent transition group-hover:shadow-[0_0_24px_-6px_rgba(99,245,231,0.8)]"
+            className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-linestrong bg-accentsoft font-display text-sm font-semibold text-accent transition group-hover:shadow-[0_0_24px_-6px_rgba(99,245,231,0.8)]"
           >
-            SI
+            {avatar ? (
+              <Image
+                src={avatar}
+                alt=""
+                fill
+                sizes="36px"
+                priority
+                className="object-cover"
+              />
+            ) : (
+              "SI"
+            )}
           </span>
           <span className="hidden font-display text-sm font-medium tracking-wide text-ink sm:block">
             T. M. Saiful Islam

@@ -225,7 +225,7 @@ export function ArrivalScene() {
       {/* Scrim: keeps the headline readable where emissive props sit behind it */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 backdrop-blur-[2px]"
         style={{
           background:
             "radial-gradient(56% 52% at 50% 46%, color-mix(in srgb, var(--bg) 78%, transparent) 0%, color-mix(in srgb, var(--bg) 48%, transparent) 60%, transparent 84%)",
@@ -244,13 +244,13 @@ export function ArrivalScene() {
           <h1 className="max-w-2xl font-display text-3xl leading-[1.1] text-ink sm:text-5xl">
             Building Digital Experiences Beyond the Ordinary.
           </h1>
-          <p className="max-w-xl text-sm leading-relaxed text-dim sm:text-base">
+          <p className="max-w-xl text-sm leading-relaxed text-ink/85 sm:text-base">
             I&apos;m Saiful — a full-stack web developer building modern websites, applications and
             digital systems.
           </p>
           <div className="hidden flex-wrap items-center justify-center gap-3 sm:flex">
             <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
-              100+ sites shipped
+              100+ projects shipped
             </span>
             <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
               1.5 years experience

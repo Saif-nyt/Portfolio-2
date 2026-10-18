@@ -13,7 +13,7 @@ const focus =
 
 const facts = [
   `${SITE.experience} of experience`,
-  `${SITE.projectsCompleted} WordPress websites completed`,
+  `${SITE.projectsCompleted} projects completed`,
 ];
 
 export async function AboutDetails() {

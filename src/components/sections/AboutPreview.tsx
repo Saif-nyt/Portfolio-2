@@ -9,7 +9,7 @@ import { SITE } from "@/lib/site";
 
 const FACTS = [
   { value: SITE.experience, label: "of experience" },
-  { value: SITE.projectsCompleted, label: "WordPress websites completed" },
+  { value: SITE.projectsCompleted, label: "projects completed" },
 ];
 
 /** Scene 2 — Discover the Developer: a quieter environment. */

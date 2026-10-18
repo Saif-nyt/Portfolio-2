@@ -8,6 +8,7 @@ import { SparkBurst } from "@/components/game/SparkBurst";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
+import { getCachedSettings } from "@/server/content-cache";
 import { SITE, SITE_URL } from "@/lib/site";
 
 const display = Space_Grotesk({
@@ -108,7 +109,8 @@ const personJsonLd = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { avatar } = await getCachedSettings();
   return (
     <html
       lang="en"
@@ -128,7 +130,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <Navbar />
+        <Navbar avatar={avatar} />
         <main id="main-content" className="flex-1">
           {children}
         </main>

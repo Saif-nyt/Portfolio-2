@@ -20,7 +20,7 @@ export async function Footer() {
             experiences and reliable conversion tracking.
           </p>
           <p className="text-sm text-faint">
-            {SITE.projectsCompleted} WordPress websites completed · {SITE.experience} of experience
+            {SITE.projectsCompleted} projects completed · {SITE.experience} of experience
           </p>
         </div>
 
