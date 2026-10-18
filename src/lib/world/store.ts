@@ -104,6 +104,36 @@ export function useWorldState(): WorldState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
+/**
+ * Full-screen drag navigation ("invisible joystick"). Held as a mutable
+ * module value rather than React state so the R3F render loop can sample it
+ * every frame with zero re-renders — the same reason the world state above is
+ * an external store. `x`/`y` are normalised to [-1, 1].
+ */
+export interface MoveInput {
+  /** -1 left … 1 right */
+  x: number;
+  /** -1 back … 1 forward */
+  y: number;
+}
+
+const moveInput: MoveInput = { x: 0, y: 0 };
+
+export function setMoveInput(x: number, y: number): void {
+  moveInput.x = x;
+  moveInput.y = y;
+}
+
+export function getMoveInput(): Readonly<MoveInput> {
+  return moveInput;
+}
+
+/** Snap the virtual joystick back to rest (finger up, blur, cancel, …). */
+export function resetMoveInput(): void {
+  moveInput.x = 0;
+  moveInput.y = 0;
+}
+
 /** Detect a sensible render tier once on the client. */
 export function detectQuality(): RenderQuality {
   if (typeof navigator === "undefined") return "high";

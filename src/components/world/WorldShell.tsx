@@ -16,6 +16,7 @@ import { Compass, Info, Map as MapIcon, X, Zap } from "lucide-react";
 import { HoloPanel } from "@/components/world/HoloPanel";
 import { WorldCodex } from "@/components/world/WorldCodex";
 import { WorldMapOverlay } from "@/components/world/WorldMapOverlay";
+import { WorldNavSurface } from "@/components/world/WorldNavSurface";
 import { LOCATION_BY_ID, type LocationId } from "@/lib/world/registry";
 import { detectQuality, useWorldState, worldActions } from "@/lib/world/store";
 import { MODE_CHANGE_EVENT, readStoredMode, setStoredMode } from "@/lib/mode";
@@ -247,7 +248,7 @@ export function WorldShell({
           pose controls) as siblings of the 3D canvas. The canvas itself is
           marked aria-hidden inside SceneCanvas. */}
       {showScene ? (
-        <div className="relative h-dvh w-full shrink-0 overflow-hidden">
+        <WorldNavSurface className="relative h-dvh w-full shrink-0 overflow-hidden">
           {children}
 
           <AnimatePresence>{showScene ? <WorldHint accent={accent} /> : null}</AnimatePresence>
@@ -272,7 +273,7 @@ export function WorldShell({
               ))}
             </ul>
           </nav>
-        </div>
+        </WorldNavSurface>
       ) : null}
 
       {/* ---------- Transition veil (keyed on pathname, auto-fades) ---------- */}

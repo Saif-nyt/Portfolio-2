@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
-import { worldActions, type ActiveObject } from "@/lib/world/store";
+import { getMoveInput, worldActions, type ActiveObject } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 
 interface Hotspot3DProps {
@@ -144,7 +144,25 @@ export interface CameraPose {
   lookAt: [number, number, number];
 }
 
-/** Simple camera state machine: lerp between named poses. */
+/** How far a full-lock drag may swing the view, in radians. */
+const YAW_LIMIT = 1;
+/** Orbit and dolly speeds at full joystick displacement. */
+const YAW_SPEED = 1.4;
+const DOLLY_SPEED = 3.2;
+/** Input easing — accelerates in and glides to a stop on release. */
+const INPUT_EASE = 9;
+/** How fast the camera eases toward the steered target (matches idle feel). */
+const FOLLOW_EASE = 2.8;
+
+/**
+ * Simple camera state machine: lerp between named poses, with an optional
+ * drag-steering layer on top. The full-screen touch surface (see
+ * `WorldNavSurface`) writes a normalised vector into `getMoveInput()`, which
+ * this samples each frame to orbit the pose's camera around its look-at point
+ * (left/right) and dolly it forward/back along the view axis. Steering is
+ * bounded so it can never leave the authored scene or clip through walls, and
+ * eases to rest when the finger lifts.
+ */
 export function CameraDirector({
   pose,
   poses,
@@ -160,19 +178,57 @@ export function CameraDirector({
   const targetPos = useMemo(() => new THREE.Vector3(), []);
   const targetLook = useMemo(() => new THREE.Vector3(), []);
   const currentLook = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const offset = useMemo(() => new THREE.Vector3(), []);
+  const steer = useRef({ yaw: 0, dolly: 0, ix: 0, iy: 0 });
+
+  // A new pose re-frames the shot (and travel remounts the scene), so forget any
+  // drag steering — the authored composition always starts clean.
+  useEffect(() => {
+    const s = steer.current;
+    s.yaw = 0;
+    s.dolly = 0;
+    s.ix = 0;
+    s.iy = 0;
+  }, [pose]);
 
   useFrame((_, delta) => {
     const config = poses[pose] ?? poses[Object.keys(poses)[0]];
     if (!config) return;
-    targetPos.set(config.position[0], config.position[1], config.position[2]);
-    targetLook.set(config.lookAt[0], config.lookAt[1], config.lookAt[2]);
     const dt = Math.min(delta, 0.05);
+    const s = steer.current;
+
+    // Sample the invisible joystick, then ease it so movement ramps in under
+    // the finger and glides to a stop when it lifts (frame-rate independent).
+    const input = getMoveInput();
+    const ease = 1 - Math.exp(-INPUT_EASE * dt);
+    s.ix += (input.x - s.ix) * ease;
+    s.iy += (input.y - s.iy) * ease;
+    s.yaw = THREE.MathUtils.clamp(s.yaw + s.ix * YAW_SPEED * dt, -YAW_LIMIT, YAW_LIMIT);
+
+    // Orbit the pose camera around its look-at point, then dolly along the view
+    // axis. The dolly is bounded to a fraction of the pose distance so the rig
+    // stays inside the room instead of punching through its geometry.
+    const [lx, ly, lz] = config.lookAt;
+    offset.set(config.position[0] - lx, config.position[1] - ly, config.position[2] - lz);
+    const cos = Math.cos(s.yaw);
+    const sin = Math.sin(s.yaw);
+    const ox = offset.x * cos + offset.z * sin;
+    const oz = -offset.x * sin + offset.z * cos;
+    const oy = offset.y;
+    const baseDist = Math.hypot(ox, oy, oz) || 1;
+    const limit = baseDist * 0.4;
+    s.dolly = THREE.MathUtils.clamp(s.dolly + s.iy * DOLLY_SPEED * dt, -limit, limit);
+    const scale = Math.max(baseDist * 0.5, baseDist - s.dolly) / baseDist;
+
+    targetPos.set(lx + ox * scale, Math.max(0.9, ly + oy * scale), lz + oz * scale);
+    targetLook.set(lx, ly, lz);
+
     if (isReduced) {
       camera.position.copy(targetPos);
       currentLook.copy(targetLook);
     } else {
-      camera.position.lerp(targetPos, 1 - Math.exp(-dt * 2.8));
-      currentLook.lerp(targetLook, 1 - Math.exp(-dt * 2.8));
+      camera.position.lerp(targetPos, 1 - Math.exp(-dt * FOLLOW_EASE));
+      currentLook.lerp(targetLook, 1 - Math.exp(-dt * FOLLOW_EASE));
     }
     camera.lookAt(currentLook);
   });

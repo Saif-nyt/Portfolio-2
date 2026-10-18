@@ -100,7 +100,10 @@ export function SceneCanvas({
   const frameloop = animate && !reduced && !tabHidden && !covered ? "always" : "demand";
 
   return (
-    <div aria-hidden="true" className="absolute inset-0">
+    // `touch-action: none` scopes the world's drag navigation to the canvas:
+    // touches here never scroll or zoom, while HUD buttons, links and any
+    // overlay outside this element keep their normal browser gestures.
+    <div aria-hidden="true" className="absolute inset-0" style={{ touchAction: "none" }}>
       <Canvas
         dpr={dpr}
         frameloop={frameloop}
