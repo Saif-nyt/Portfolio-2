@@ -40,7 +40,9 @@ function readWebgl(): boolean {
   if (cachedWebgl !== null) return cachedWebgl;
   try {
     const canvas = document.createElement("canvas");
-    cachedWebgl = Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    cachedWebgl = Boolean(gl);
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
   } catch {
     cachedWebgl = false;
   }

@@ -1,7 +1,15 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Suspense,
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import * as THREE from "three";
 import { useWorldState } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
@@ -16,14 +24,21 @@ interface SceneCanvasProps {
   animate?: boolean;
 }
 
+let cachedWebgl: boolean | null = null;
 function hasWebGL(): boolean {
+  if (cachedWebgl !== null) return cachedWebgl;
   if (typeof document === "undefined") return false;
   try {
     const canvas = document.createElement("canvas");
-    return Boolean(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    cachedWebgl = Boolean(gl);
+    // Probe once, then release the context so it never counts against the
+    // browser's live-WebGL-context budget.
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
   } catch {
-    return false;
+    cachedWebgl = false;
   }
+  return cachedWebgl;
 }
 
 /**
@@ -44,6 +59,28 @@ export function SceneCanvas({
   const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
   const [tabHidden, setTabHidden] = useState(false);
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  // Next.js keeps visited routes mounted and hides them with `display:none`
+  // (React <Activity>), and @react-three/fiber deliberately keeps its root alive
+  // across those hide/show cycles. A route evicted from the cache therefore
+  // unmounts without releasing its WebGL context, so rapid navigation exhausts
+  // the browser's context budget ("Too many active WebGL contexts. Oldest
+  // context will be lost.") and blanks whatever scene is on screen. Insertion
+  // effects survive Activity hiding — only a real removal runs their cleanup —
+  // so this forces the context down exactly once, when the route is truly gone,
+  // leaving the up-to-three retained routes untouched.
+  useInsertionEffect(() => {
+    return () => {
+      const gl = glRef.current;
+      glRef.current = null;
+      try {
+        gl?.forceContextLoss();
+      } catch {
+        // Context was already released.
+      }
+    };
+  }, []);
 
   // R3F keeps rendering when the tab is in the background — pause the loop.
   useEffect(() => {
@@ -74,6 +111,7 @@ export function SceneCanvas({
         }}
         camera={{ fov: cameraFov, near: 0.1, far: 120, position: cameraPosition }}
         onCreated={({ gl }) => {
+          glRef.current = gl;
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.05;
         }}
