@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
-import { getMoveInput, worldActions, type ActiveObject } from "@/lib/world/store";
+import {
+  getMoveInput,
+  getZoom,
+  resetZoom,
+  worldActions,
+  type ActiveObject,
+} from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 
 interface Hotspot3DProps {
@@ -144,24 +150,26 @@ export interface CameraPose {
   lookAt: [number, number, number];
 }
 
-/** How far a full-lock drag may swing the view, in radians. */
-const YAW_LIMIT = 1;
-/** Orbit and dolly speeds at full joystick displacement. */
-const YAW_SPEED = 1.4;
-const DOLLY_SPEED = 3.2;
+/** Orbit and pitch speeds at full joystick displacement. */
+const YAW_SPEED = 1.6;
+const PITCH_SPEED = 1.1;
+/** Vertical look limits (radians) so the orbit never dives under the floor. */
+const PITCH_MIN = -0.18;
+const PITCH_MAX = 1.32;
 /** Input easing — accelerates in and glides to a stop on release. */
 const INPUT_EASE = 9;
 /** How fast the camera eases toward the steered target (matches idle feel). */
 const FOLLOW_EASE = 2.8;
 
 /**
- * Simple camera state machine: lerp between named poses, with an optional
- * drag-steering layer on top. The full-screen touch surface (see
- * `WorldNavSurface`) writes a normalised vector into `getMoveInput()`, which
- * this samples each frame to orbit the pose's camera around its look-at point
- * (left/right) and dolly it forward/back along the view axis. Steering is
- * bounded so it can never leave the authored scene or clip through walls, and
- * eases to rest when the finger lifts.
+ * Simple camera state machine: lerp between named poses, with a drag-steering
+ * layer on top. The full-screen touch surface (see `WorldNavSurface`) writes a
+ * normalised vector into `getMoveInput()`, which this samples each frame to
+ * orbit the pose's camera around its look-at point. Horizontal drag swings the
+ * view a full 360°; vertical drag pitches it up and down (bounded so the orbit
+ * never clips through the floor); a pinch (mobile) or ctrl-scroll (trackpad)
+ * dollies along the view axis via `getZoom()`. Steering eases to rest when the
+ * finger lifts.
  */
 export function CameraDirector({
   pose,
@@ -179,16 +187,17 @@ export function CameraDirector({
   const targetLook = useMemo(() => new THREE.Vector3(), []);
   const currentLook = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const offset = useMemo(() => new THREE.Vector3(), []);
-  const steer = useRef({ yaw: 0, dolly: 0, ix: 0, iy: 0 });
+  const steer = useRef({ yaw: 0, pitch: 0, ix: 0, iy: 0 });
 
   // A new pose re-frames the shot (and travel remounts the scene), so forget any
   // drag steering — the authored composition always starts clean.
   useEffect(() => {
     const s = steer.current;
     s.yaw = 0;
-    s.dolly = 0;
+    s.pitch = 0;
     s.ix = 0;
     s.iy = 0;
+    resetZoom();
   }, [pose]);
 
   useFrame((_, delta) => {
@@ -203,24 +212,28 @@ export function CameraDirector({
     const ease = 1 - Math.exp(-INPUT_EASE * dt);
     s.ix += (input.x - s.ix) * ease;
     s.iy += (input.y - s.iy) * ease;
-    s.yaw = THREE.MathUtils.clamp(s.yaw + s.ix * YAW_SPEED * dt, -YAW_LIMIT, YAW_LIMIT);
+    // Horizontal drag orbits a full, unclamped 360°; vertical drag pitches.
+    s.yaw += s.ix * YAW_SPEED * dt;
+    s.pitch += s.iy * PITCH_SPEED * dt;
 
-    // Orbit the pose camera around its look-at point, then dolly along the view
-    // axis. The dolly is bounded to a fraction of the pose distance so the rig
-    // stays inside the room instead of punching through its geometry.
+    // Rebuild the pose's offset in spherical coordinates around its look-at
+    // point so yaw can wrap past ±π without gimbal drift, then apply pitch and
+    // the pinch/scroll dolly. The radius is bounded to keep the rig inside the
+    // authored space instead of punching through its geometry.
     const [lx, ly, lz] = config.lookAt;
     offset.set(config.position[0] - lx, config.position[1] - ly, config.position[2] - lz);
-    const cos = Math.cos(s.yaw);
-    const sin = Math.sin(s.yaw);
-    const ox = offset.x * cos + offset.z * sin;
-    const oz = -offset.x * sin + offset.z * cos;
-    const oy = offset.y;
-    const baseDist = Math.hypot(ox, oy, oz) || 1;
-    const limit = baseDist * 0.4;
-    s.dolly = THREE.MathUtils.clamp(s.dolly + s.iy * DOLLY_SPEED * dt, -limit, limit);
-    const scale = Math.max(baseDist * 0.5, baseDist - s.dolly) / baseDist;
+    const baseR = offset.length() || 1;
+    const basePhi = Math.asin(THREE.MathUtils.clamp(offset.y / baseR, -1, 1));
+    const baseTheta = Math.atan2(offset.x, offset.z);
+    const theta = baseTheta + s.yaw;
+    const phi = THREE.MathUtils.clamp(basePhi + s.pitch, PITCH_MIN, PITCH_MAX);
+    const r = THREE.MathUtils.clamp(baseR * Math.exp(-getZoom()), baseR * 0.32, baseR * 2.6);
+    const cosPhi = Math.cos(phi);
+    const ox = Math.sin(theta) * cosPhi * r;
+    const oy = Math.sin(phi) * r;
+    const oz = Math.cos(theta) * cosPhi * r;
 
-    targetPos.set(lx + ox * scale, Math.max(0.9, ly + oy * scale), lz + oz * scale);
+    targetPos.set(lx + ox, Math.max(0.75, ly + oy), lz + oz);
     targetLook.set(lx, ly, lz);
 
     if (isReduced) {

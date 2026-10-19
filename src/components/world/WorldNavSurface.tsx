@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { resetMoveInput, setMoveInput, useWorldState } from "@/lib/world/store";
+import { addZoom, resetMoveInput, setMoveInput, useWorldState } from "@/lib/world/store";
 
 /** Finger travel (px) before a press counts as a drag rather than a tap. */
 const DRAG_THRESHOLD = 8;
 /** Drag distance (px) that maps to full movement intensity. */
 const SATURATION = 110;
+/** Pinch sensitivity: how strongly the finger-distance ratio changes zoom. */
+const PINCH_GAIN = 1.7;
 /** How long after a drag to swallow the trailing click (ms). */
 const CLICK_SUPPRESS_MS = 400;
 
@@ -22,6 +24,18 @@ function clampUnit(value: number): number {
   return value < -1 ? -1 : value > 1 ? 1 : value;
 }
 
+function pointerDistance(pointers: Map<number, { x: number; y: number }>): number {
+  let first: { x: number; y: number } | null = null;
+  for (const point of pointers.values()) {
+    if (!first) {
+      first = point;
+      continue;
+    }
+    return Math.hypot(first.x - point.x, first.y - point.y);
+  }
+  return 0;
+}
+
 /**
  * The invisible full-screen joystick. Wraps a world location's scene layer and
  * turns any press-and-drag on empty world space into a normalised movement
@@ -32,7 +46,8 @@ function clampUnit(value: number): number {
  *
  * The vector is written to the world store (not React state) and consumed by
  * {@link CameraDirector} each frame, so sustained dragging keeps moving even
- * when pointer events are sparse.
+ * when pointer events are sparse. A two-finger pinch (or a ctrl-scroll from a
+ * trackpad) zooms the camera in and out so the whole world can be taken in.
  */
 export function WorldNavSurface({
   className,
@@ -56,37 +71,61 @@ export function WorldNavSurface({
     const surface = ref.current;
     if (!surface) return;
 
-    let active = false;
-    let pointerId = -1;
+    const pointers = new Map<number, { x: number; y: number }>();
+    let dragId = -1;
     let startX = 0;
     let startY = 0;
     let moved = false;
+    let pinching = false;
+    let pinchDist = 0;
     let suppressClickUntil = 0;
 
     const isInteractive = (target: EventTarget | null) =>
       target instanceof Element && Boolean(target.closest(INTERACTIVE_SELECTOR));
 
-    const end = () => {
-      active = false;
-      pointerId = -1;
+    const endDrag = () => {
+      dragId = -1;
       moved = false;
       resetMoveInput();
     };
 
+    const end = () => {
+      pointers.clear();
+      pinching = false;
+      pinchDist = 0;
+      endDrag();
+    };
+
     const onPointerDown = (event: PointerEvent) => {
-      // One gesture at a time; the first touch wins and extras are ignored.
-      if (active || !event.isPrimary) return;
       if (event.pointerType === "mouse" && event.button !== 0) return;
       if (blockedRef.current || isInteractive(event.target)) return;
-      active = true;
-      pointerId = event.pointerId;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pointers.size >= 2) {
+        // A second finger turns the gesture into a pinch; abandon any drag.
+        pinching = true;
+        moved = true;
+        pinchDist = pointerDistance(pointers);
+        if (dragId !== -1) endDrag();
+        return;
+      }
+      dragId = event.pointerId;
       startX = event.clientX;
       startY = event.clientY;
       moved = false;
     };
 
     const onPointerMove = (event: PointerEvent) => {
-      if (!active || event.pointerId !== pointerId) return;
+      if (pointers.has(event.pointerId)) {
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+      if (pinching) {
+        if (pointers.size < 2) return;
+        const dist = pointerDistance(pointers);
+        if (pinchDist > 0 && dist > 0) addZoom(Math.log(dist / pinchDist) * PINCH_GAIN);
+        pinchDist = dist;
+        return;
+      }
+      if (dragId === -1 || event.pointerId !== dragId) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
       if (!moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) moved = true;
@@ -96,14 +135,26 @@ export function WorldNavSurface({
     };
 
     const onPointerUp = (event: PointerEvent) => {
-      if (!active || event.pointerId !== pointerId) return;
-      if (moved) suppressClickUntil = performance.now() + CLICK_SUPPRESS_MS;
-      end();
+      const tracked = pointers.delete(event.pointerId);
+      if (!tracked && event.pointerId !== dragId) return;
+      if (pinching && pointers.size < 2) {
+        pinching = false;
+        pinchDist = 0;
+        suppressClickUntil = performance.now() + CLICK_SUPPRESS_MS;
+      }
+      if (event.pointerId === dragId) {
+        if (moved) suppressClickUntil = performance.now() + CLICK_SUPPRESS_MS;
+        endDrag();
+      }
     };
 
     const onPointerCancel = (event: PointerEvent) => {
-      if (!active || event.pointerId !== pointerId) return;
-      end();
+      pointers.delete(event.pointerId);
+      if (pointers.size === 0) {
+        end();
+      } else if (event.pointerId === dragId) {
+        endDrag();
+      }
     };
 
     // Capture phase: runs before the raycast canvas sees the click, so a drag
@@ -115,6 +166,14 @@ export function WorldNavSurface({
       event.preventDefault();
     };
 
+    // Trackpad pinch arrives as a ctrl-modified wheel; plain wheel is left to
+    // the page so the world never hijacks document scrolling.
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey || blockedRef.current) return;
+      event.preventDefault();
+      addZoom(-event.deltaY * 0.002);
+    };
+
     const onInterrupt = () => end();
     const onVisibility = () => {
       if (document.visibilityState === "hidden") end();
@@ -123,6 +182,7 @@ export function WorldNavSurface({
     surface.addEventListener("pointerdown", onPointerDown);
     surface.addEventListener("lostpointercapture", onPointerCancel);
     surface.addEventListener("click", onClickCapture, true);
+    surface.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
@@ -134,6 +194,7 @@ export function WorldNavSurface({
       surface.removeEventListener("pointerdown", onPointerDown);
       surface.removeEventListener("lostpointercapture", onPointerCancel);
       surface.removeEventListener("click", onClickCapture, true);
+      surface.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);

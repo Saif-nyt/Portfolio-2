@@ -162,6 +162,29 @@ export function resetMoveInput(): void {
   moveInput.y = 0;
 }
 
+/**
+ * Camera zoom, stored as a logarithmic offset from the authored pose so the
+ * same gesture feels identical whether the shot is close or far. `0` is the
+ * authored framing; positive pulls the camera in, negative pushes it out
+ * (within {@link ZOOM_MIN}–{@link ZOOM_MAX}). Held outside React state so the
+ * render loop can read it every frame with no re-renders.
+ */
+export const ZOOM_MIN = -1.2;
+export const ZOOM_MAX = 1.2;
+let zoom = 0;
+
+export function addZoom(delta: number): void {
+  zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom + delta));
+}
+
+export function getZoom(): number {
+  return zoom;
+}
+
+export function resetZoom(): void {
+  zoom = 0;
+}
+
 /** Detect a sensible render tier once on the client. */
 export function detectQuality(): RenderQuality {
   if (typeof navigator === "undefined") return "high";
