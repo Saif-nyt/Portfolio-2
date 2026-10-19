@@ -1,17 +1,65 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions, useWorldState } from "@/lib/world/store";
-import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme, mixHex } from "@/lib/world/scene-theme";
 import { Campsite } from "./Campsite";
 import { Forest } from "./Forest";
 
 const ACCENT = "#63f5e7";
+const PATH_WIDTH = 1.45;
+const PATH_ROUTES: [number, number, number][][] = [
+  [[0, 0.025, 16], [0, 0.025, 12], [0.2, 0.025, 8], [-0.35, 0.025, 5], [0, 0.025, 2]],
+  [[0, 0.025, 2], [-0.8, 0.025, 1.6], [-1.8, 0.025, 1.6], [-2.5, 0.025, 2]],
+  [[0, 0.025, 2], [1, 0.025, 1.5], [2, 0.025, 1.3], [3, 0.025, 1.5]],
+  [[0, 0.025, 2], [-1.2, 0.025, 0.8], [-2.6, 0.025, -0.2], [-4, 0.025, -1]],
+];
+
+function makePathRibbon(
+  controlPoints: [number, number, number][],
+  width: number,
+  sideOffset = 0,
+): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3(controlPoints.map((point) => new THREE.Vector3(...point)));
+  const samples = curve.getPoints(64);
+  const positions = new Float32Array(samples.length * 2 * 3);
+  const indices: number[] = [];
+
+  for (let i = 0; i < samples.length; i += 1) {
+    const point = samples[i];
+    const tangent = curve.getTangent(i / (samples.length - 1));
+    const sideX = -tangent.z;
+    const sideZ = tangent.x;
+    const centerX = point.x + sideX * sideOffset;
+    const centerZ = point.z + sideZ * sideOffset;
+    const halfWidth = width / 2;
+    const vertex = i * 6;
+
+    positions[vertex] = centerX + sideX * halfWidth;
+    positions[vertex + 1] = point.y;
+    positions[vertex + 2] = centerZ + sideZ * halfWidth;
+    positions[vertex + 3] = centerX - sideX * halfWidth;
+    positions[vertex + 4] = point.y;
+    positions[vertex + 5] = centerZ - sideZ * halfWidth;
+
+    if (i < samples.length - 1) {
+      const first = i * 2;
+      indices.push(first, first + 2, first + 1, first + 1, first + 2, first + 3);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 6.2, 35], lookAt: [0, 4.3, 17] },
@@ -26,17 +74,70 @@ const POSES: Record<string, CameraPose> = {
 /** Glowing path strip on the valley floor. */
 function ValleyPath() {
   const palette = useSceneTheme();
+  const paths = useMemo(
+    () =>
+      PATH_ROUTES.map((route) => ({
+        ground: makePathRibbon(route, PATH_WIDTH),
+        edges: [
+          makePathRibbon(route, 0.035, PATH_WIDTH / 2 - 0.06),
+          makePathRibbon(route, 0.035, -PATH_WIDTH / 2 + 0.06),
+        ],
+      })),
+    [],
+  );
+
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[24, 14]} />
-        <meshStandardMaterial color={palette.floor} roughness={0.95} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <planeGeometry args={[20, 1.2]} />
-        <meshStandardMaterial color={palette.floorDeep} emissive={palette.accent(ACCENT)} emissiveIntensity={0.14} />
-      </mesh>
+      {paths.map((path, index) => (
+        <group key={index}>
+          <mesh geometry={path.ground} receiveShadow>
+            <meshStandardMaterial
+              color={mixHex(palette.floorDeep, palette.stoneDark, 0.42)}
+              roughness={0.92}
+            />
+          </mesh>
+          {path.edges.map((edge, edgeIndex) => (
+            <mesh key={edgeIndex} geometry={edge}>
+              <meshBasicMaterial
+                color={palette.accent(ACCENT)}
+                transparent
+                opacity={0.52}
+                toneMapped={false}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
     </group>
+  );
+}
+
+function ValleyTerrain() {
+  const palette = useSceneTheme();
+  const geometry = useMemo(() => {
+    const terrain = new THREE.PlaneGeometry(300, 300, 96, 96);
+    const positions = terrain.attributes.position;
+
+    for (let i = 0; i < positions.count; i += 1) {
+      const x = positions.getX(i);
+      const z = -positions.getY(i);
+      const distance = Math.hypot(x, z);
+      const rise = THREE.MathUtils.smoothstep(distance, 24, 108);
+      const ridges =
+        Math.sin(x * 0.04 + Math.sin(z * 0.025) * 1.7) * 1.6 +
+        Math.sin(z * 0.075 + x * 0.018) * 0.7;
+
+      positions.setZ(i, rise * (ridges + rise * 3.2));
+    }
+
+    terrain.computeVertexNormals();
+    return terrain;
+  }, []);
+
+  return (
+    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <meshStandardMaterial color={palette.floor} roughness={0.96} />
+    </mesh>
   );
 }
 
@@ -130,10 +231,10 @@ function GlowCrystals({
  */
 export function ArrivalScene() {
   const reduced = usePrefersReducedMotion();
+  const isMobile = useIsMobile();
   const { quality, worldEntry } = useWorldState();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
   const palette = useSceneTheme({ bg: "#d6ddd0", fog: "#dfe6da" });
-
   const handlePoseComplete = useCallback(
     (completedPose: string) => {
       if (completedPose === "overview" && worldEntry === "entering") {
@@ -147,10 +248,10 @@ export function ArrivalScene() {
     <SceneScope accent={ACCENT}>
       <SceneCanvas
         cameraPosition={POSES.entrance.position}
-        cameraFov={46}
+        cameraFov={isMobile ? 72 : 46}
         background={palette.bg}
         fog={{ color: palette.fog, density: palette.fogDensity }}
-        animate
+        animate={worldEntry !== "outside"}
         interactive={worldEntry === "inside"}
       >
         <LightRig fillColor={ACCENT} intensity={0.85} />
@@ -162,11 +263,8 @@ export function ArrivalScene() {
           onPoseComplete={handlePoseComplete}
         />
 
+        <ValleyTerrain />
         {/* The main world gate is deliberately larger than every destination entrance. */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 17]}>
-          <planeGeometry args={[20, 18]} />
-          <meshStandardMaterial color={palette.floor} roughness={0.96} />
-        </mesh>
         <TempleEntrance
           position={[0, 0, 17]}
           accent={ACCENT}

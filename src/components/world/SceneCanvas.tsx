@@ -12,7 +12,7 @@ import {
 } from "react";
 import * as THREE from "three";
 import { useWorldState } from "@/lib/world/store";
-import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { GalaxySky } from "@/components/world/GalaxySky";
 
 interface SceneCanvasProps {
@@ -60,6 +60,7 @@ export function SceneCanvas({
   interactive = true,
 }: SceneCanvasProps) {
   const { quality, activeObject, mapOpen, codex } = useWorldState();
+  const isMobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
   const [tabHidden, setTabHidden] = useState(false);
@@ -96,7 +97,11 @@ export function SceneCanvas({
 
   if (!webglOk) return null;
 
-  const dpr: [number, number] = quality === "high" ? [1, 1.75] : [0.85, 1.1];
+  const dpr: [number, number] = quality === "high"
+    ? [1, 1.75]
+    : isMobile
+      ? [1, 1.35]
+      : [0.85, 1.1];
   // Idle loops (flora, rings, particles) run only when motion is welcome and
   // nothing is covering the scene; a hidden tab, reduced-motion preference,
   // open panel/map, or open codex all drop to on-demand frames.
@@ -110,17 +115,21 @@ export function SceneCanvas({
     <div
       aria-hidden="true"
       className="absolute inset-0"
-      style={{ touchAction: "none", pointerEvents: interactive ? "auto" : "none" }}
+      style={{
+        touchAction: "none",
+        pointerEvents: interactive ? "auto" : "none",
+        backgroundColor: background,
+      }}
     >
       <Canvas
         dpr={dpr}
         frameloop={frameloop}
         gl={{
-          antialias: quality === "high",
+          antialias: quality === "high" || isMobile,
           powerPreference: "high-performance",
           alpha: false,
         }}
-        camera={{ fov: cameraFov, near: 0.1, far: 120, position: cameraPosition }}
+        camera={{ fov: isMobile ? Math.max(cameraFov, 64) : cameraFov, near: 0.1, far: 120, position: cameraPosition }}
         onCreated={({ gl }) => {
           glRef.current = gl;
           gl.toneMapping = THREE.ACESFilmicToneMapping;

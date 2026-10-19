@@ -10,7 +10,7 @@ import {
   worldActions,
   type ActiveObject,
 } from "@/lib/world/store";
-import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { getDotTexture } from "@/components/world/arrival/fx-textures";
 
@@ -259,6 +259,7 @@ export function CameraDirector({
   onPoseComplete?: (pose: string) => void;
 }) {
   const { camera } = useThree();
+  const isMobile = useIsMobile();
   const prefersReduced = usePrefersReducedMotion();
   const isReduced = reduced || prefersReduced;
   const targetPos = useMemo(() => new THREE.Vector3(), []);
@@ -302,7 +303,7 @@ export function CameraDirector({
     // authored space instead of punching through its geometry.
     const [lx, ly, lz] = config.lookAt;
     offset.set(config.position[0] - lx, config.position[1] - ly, config.position[2] - lz);
-    const baseR = offset.length() || 1;
+    const baseR = (offset.length() || 1) * (isMobile && pose === "entrance" ? 2.2 : 1);
     const basePhi = Math.asin(THREE.MathUtils.clamp(offset.y / baseR, -1, 1));
     s.pitch = THREE.MathUtils.clamp(s.pitch, PITCH_MIN - basePhi, PITCH_MAX - basePhi);
     const baseTheta = Math.atan2(offset.x, offset.z);
@@ -322,8 +323,9 @@ export function CameraDirector({
       camera.position.copy(targetPos);
       currentLook.copy(targetLook);
     } else {
-      camera.position.lerp(targetPos, 1 - Math.exp(-dt * FOLLOW_EASE));
-      currentLook.lerp(targetLook, 1 - Math.exp(-dt * FOLLOW_EASE));
+      const followEase = isMobile ? FOLLOW_EASE * 1.25 : FOLLOW_EASE;
+      camera.position.lerp(targetPos, 1 - Math.exp(-dt * followEase));
+      currentLook.lerp(targetLook, 1 - Math.exp(-dt * followEase));
     }
     camera.lookAt(currentLook);
 

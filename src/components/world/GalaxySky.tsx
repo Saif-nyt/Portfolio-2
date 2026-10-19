@@ -25,10 +25,14 @@ function getNebulaTexture(): THREE.CanvasTexture {
 
   const { width, height } = canvas;
   const background = context.createLinearGradient(0, 0, 0, height);
-  background.addColorStop(0, "rgba(3, 7, 25, 0.08)");
-  background.addColorStop(0.46, "rgba(7, 14, 42, 0.18)");
-  background.addColorStop(0.58, "rgba(8, 10, 34, 0.2)");
-  background.addColorStop(1, "rgba(3, 7, 24, 0.08)");
+  background.addColorStop(0, "#040b10");
+  background.addColorStop(0.35, "#07151b");
+  background.addColorStop(0.5, "#0b2529");
+  background.addColorStop(0.62, "#18332f");
+  background.addColorStop(0.67, "#493b30");
+  background.addColorStop(0.72, "#795034");
+  background.addColorStop(0.78, "#30231f");
+  background.addColorStop(1, "#091014");
   context.fillStyle = background;
   context.fillRect(0, 0, width, height);
 
@@ -39,7 +43,7 @@ function getNebulaTexture(): THREE.CanvasTexture {
     const y = (band + (hash01(i * 7 + 2) - 0.5) * 0.26) * height;
     const radiusX = 28 + hash01(i * 7 + 3) * 155;
     const radiusY = 8 + hash01(i * 7 + 4) * 55;
-    const colors = ["92, 109, 255", "168, 75, 255", "55, 171, 255", "48, 224, 221", "235, 84, 189"];
+    const colors = ["54, 107, 113", "85, 140, 143", "39, 83, 94", "55, 100, 91", "167, 112, 67"];
     const color = colors[Math.floor(hash01(i * 7 + 5) * colors.length)];
 
     context.save();
@@ -47,8 +51,8 @@ function getNebulaTexture(): THREE.CanvasTexture {
     context.rotate((hash01(i * 7 + 6) - 0.5) * 0.42);
     context.scale(radiusX, radiusY);
     const cloud = context.createRadialGradient(0, 0, 0.03, 0, 0, 1);
-    cloud.addColorStop(0, `rgba(${color}, ${0.08 + hash01(i * 7 + 7) * 0.12})`);
-    cloud.addColorStop(0.38, `rgba(${color}, 0.07)`);
+    cloud.addColorStop(0, `rgba(${color}, ${0.05 + hash01(i * 7 + 7) * 0.08})`);
+    cloud.addColorStop(0.38, `rgba(${color}, 0.04)`);
     cloud.addColorStop(1, `rgba(${color}, 0)`);
     context.fillStyle = cloud;
     context.beginPath();
@@ -70,7 +74,7 @@ function makeStarField(count: number, radius: number) {
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const color = new THREE.Color();
-  const palette = ["#f8f7ff", "#c9ddff", "#84efff", "#ffd9f0", "#ffe8bd"];
+  const palette = ["#d6e4dc", "#a9c5c7", "#7dabb2", "#d6b28c", "#ecede0"];
 
   for (let i = 0; i < count; i += 1) {
     const y = hash01(i * 4 + 1) * 2 - 1;
@@ -121,7 +125,7 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
           color="#ffffff"
           side={THREE.BackSide}
           transparent
-          opacity={0.84}
+          opacity={0.72}
           depthWrite={false}
           fog={false}
           toneMapped={false}
