@@ -13,16 +13,21 @@ import {
 import type { ContactFormState, ContactValues } from "@/lib/contact";
 import { isEmailConfigured, sendContactEmail } from "@/lib/email";
 import { SITE } from "@/lib/site";
+import { isMongoConfigured, storeContactInquiry } from "@/server/mongodb";
 
 const MESSAGES = {
   honeypot: "Thanks — your message has been received.",
   tooFast:
     "That went through a little quickly. Please take a moment to review the details and send the message again.",
   validation: "Please review the highlighted fields and send the message again.",
-  unconfigured: `This form is not connected to an inbox yet, so nothing was sent. Please email ${SITE.email} directly or use WhatsApp instead, and the message will reach me either way.`,
+  unconfigured: `This form is not connected to its message database yet, so nothing was saved. Please email ${SITE.email} directly or use WhatsApp instead.`,
+  saveFailure: `Your message could not be saved just now. Please email ${SITE.email} directly and I will get back to you as soon as possible.`,
+  savedWithoutEmail:
+    "Thank you — your message has been received and saved. I will review it and get back to you as soon as possible.",
+  savedEmailFailure:
+    "Your message has been received and saved, but the email notification could not be sent. I will review it and get back to you as soon as possible.",
   success:
-    "Thank you — your message has been sent. I will review it and get back to you as soon as possible.",
-  failure: `Your message could not be sent just now, so nothing was delivered. Please email ${SITE.email} directly and I will get back to you as soon as possible.`,
+    "Thank you — your message has been received. I will review it and get back to you as soon as possible.",
 };
 
 function rateLimitMessage(retryAfterSeconds: number): string {
@@ -76,8 +81,7 @@ export async function submitInquiry(
   }
 
   const values = validation.values;
-
-  if (!isEmailConfigured()) {
+  if (!isMongoConfigured()) {
     return { status: "unconfigured", message: MESSAGES.unconfigured, values: { ...values } };
   }
 
@@ -95,6 +99,19 @@ export async function submitInquiry(
 
   recordRateLimit(keys);
 
+  try {
+    await storeContactInquiry(values);
+  } catch (error) {
+    console.error("contact form submission could not be saved", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    return { status: "error", message: MESSAGES.saveFailure, values: { ...values } };
+  }
+
+  if (!isEmailConfigured()) {
+    return { status: "success", message: MESSAGES.savedWithoutEmail };
+  }
+
   const email = buildEmail(values);
   const result = await sendContactEmail({
     subject: email.subject,
@@ -103,11 +120,11 @@ export async function submitInquiry(
   });
 
   if (!result.configured) {
-    return { status: "unconfigured", message: MESSAGES.unconfigured, values: { ...values } };
+    return { status: "success", message: MESSAGES.savedWithoutEmail };
   }
 
   if (!result.ok) {
-    return { status: "error", message: MESSAGES.failure, values: { ...values } };
+    return { status: "success", message: MESSAGES.savedEmailFailure };
   }
 
   return { status: "success", message: MESSAGES.success };

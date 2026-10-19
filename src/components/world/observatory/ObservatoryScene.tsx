@@ -1,17 +1,23 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
+import { EntrancePrompt } from "@/components/world/EntrancePrompt";
+import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#b39dff";
 
 const POSES: Record<string, CameraPose> = {
+  entrance: { position: [0, 2.6, 16.5], lookAt: [0, 2.6, 11.5] },
   overview: { position: [0, 2.6, 9.5], lookAt: [0, 1.4, 0] },
   core: { position: [0, 2, 6], lookAt: [0, 1.4, 0] },
   left: { position: [-2, 2, 5.5], lookAt: [-3.5, 1.4, -1] },
@@ -258,31 +264,54 @@ function SkillNodeMesh({
   highlighted: boolean;
 }) {
   const ref = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
+  const shellRef = useRef<THREE.Mesh>(null);
+  const palette = useSceneTheme();
+  const glow = palette.accent(node.accent);
+  useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
-    ref.current.position.y = node.position[1] + Math.sin(t * 0.8 + node.position[0]) * 0.08;
-    const material = ref.current.material as THREE.MeshStandardMaterial;
-    material.emissiveIntensity = highlighted ? 2.8 : 1.5 + Math.sin(t * 2 + node.position[0]) * 0.3;
+    if (ref.current) {
+      ref.current.position.y = Math.sin(t * 0.8 + node.position[0]) * 0.08;
+      const material = ref.current.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = (highlighted ? 2.8 : 1.5 + Math.sin(t * 2 + node.position[0]) * 0.3) * palette.glow;
+    }
+    if (shellRef.current) {
+      shellRef.current.rotation.y += delta * 0.4;
+      shellRef.current.rotation.x += delta * 0.14;
+    }
   });
 
   return (
-    <mesh ref={ref} position={node.position}>
-      <icosahedronGeometry args={[0.28, 1]} />
-      <meshStandardMaterial
-        color="#0d2420"
-        emissive={node.accent}
-        emissiveIntensity={1.5}
-        roughness={0.3}
-        metalness={0.15}
-        toneMapped={false}
-      />
-    </mesh>
+    <group position={node.position}>
+      {/* Solid relic core */}
+      <mesh ref={ref}>
+        <icosahedronGeometry args={[0.24, 1]} />
+        <meshStandardMaterial
+          color={palette.metal}
+          emissive={glow}
+          emissiveIntensity={1.5 * palette.glow}
+          roughness={0.3}
+          metalness={0.25}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Faceted containment shell */}
+      <mesh ref={shellRef}>
+        <icosahedronGeometry args={[0.36, 0]} />
+        <meshBasicMaterial
+          color={glow}
+          wireframe
+          transparent
+          opacity={palette.isLight ? 0.55 : 0.35}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
   );
 }
 
 /** Connection lines between related nodes. */
 function ConnectionLines() {
+  const palette = useSceneTheme();
   const geometry = useMemo(() => {
     const points: number[] = [];
     const core = NODES.filter((n) => n.group === "core");
@@ -304,39 +333,43 @@ function ConnectionLines() {
 
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={ACCENT} transparent opacity={0.22} />
+      <lineBasicMaterial color={palette.accent(ACCENT)} transparent opacity={palette.isLight ? 0.4 : 0.22} />
     </lineSegments>
   );
 }
-
 /**
  * Holographic Observatory — Skills. A constellation of technology nodes
  * floating in a dark chamber; clicking a node reveals what it is used for.
  */
 export function ObservatoryScene() {
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const [inside, setInside] = useState(false);
+  const palette = useSceneTheme({ bg: "#d8dcdb", fog: "#e4e6e3" });
 
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
-        cameraPosition={POSES.overview.position}
+        cameraPosition={POSES.entrance.position}
         cameraFov={44}
-        background="#050a0e"
-        fog={{ color: "#060d12", density: 0.05 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
       >
-        <LightRig keyColor="#c5d8f0" fillColor={ACCENT} intensity={0.75} />
-        <CameraDirector pose={pose as string} poses={POSES} />
-        <AmbientMotes color={ACCENT} radius={7} height={5.5} count={110} size={0.16} />
+        <LightRig fillColor={ACCENT} intensity={0.75} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <AmbientMotes color={palette.mote} radius={7} height={5.5} count={110} size={0.16} />
+
+        {/* The temple entrance into the observatory */}
+        <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={inside} />
 
         {/* Observatory floor: disc first, inlaid ring lifted a hair to avoid z-fighting */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[5.5, 48]} />
-          <meshStandardMaterial color="#060e14" roughness={0.95} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
           <ringGeometry args={[3.5, 5.5, 48]} />
-          <meshStandardMaterial color="#0a1520" emissive={ACCENT} emissiveIntensity={0.15} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(ACCENT)} emissiveIntensity={0.15} side={THREE.DoubleSide} />
         </mesh>
 
         {/* Slowly counter-rotating instrument rings and a central light column */}
@@ -370,7 +403,7 @@ export function ObservatoryScene() {
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
-        <p className="font-mono text-[0.6rem] tracking-[0.28em] text-accent uppercase">
+        <p className="font-mono text-[0.6rem] tracking-[0.28em] uppercase" style={{ color: "var(--loc-accent-text)" }}>
           HOLOGRAPHIC OBSERVATORY · SKILLS
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -381,18 +414,35 @@ export function ObservatoryScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-        {(["overview", "core", "left", "right"] as const).map((p) => (
+      <EntrancePrompt label="the Observatory" open={inside} onEnter={() => setInside(true)} />
+
+      {inside ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
+          {(["overview", "core", "left", "right"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPose(p)}
+              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            >
+              {p}
+            </button>
+          ))}
           <button
-            key={p}
             type="button"
-            onClick={() => setPose(p)}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            onClick={() => setInside(false)}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
-            {p}
+            Exit temple
           </button>
-        ))}
-      </div>
-    </>
+          <Link
+            href="/"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
+          >
+            Arrival Valley
+          </Link>
+        </div>
+      ) : null}
+    </SceneScope>
   );
 }

@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { hash01 } from "@/lib/world/anim";
 import { createWindMaterial } from "@/lib/world/wind";
+import { useSceneTheme, mixHex } from "@/lib/world/scene-theme";
 import { getMistTexture } from "./fx-textures";
 
 type Tier = "high" | "low";
@@ -305,6 +306,7 @@ function Mushrooms({ quality, zones }: { quality: Tier; zones: Zone[] }) {
 
 function Rocks({ quality, zones }: { quality: Tier; zones: Zone[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
+  const palette = useSceneTheme();
   const geometry = useMemo(() => new THREE.DodecahedronGeometry(0.32, 0), []);
   const items = useMemo(
     () => scatter(quality === "high" ? 34 : 16, 131.7, [-10, 10, -6, 6], 14, 1.6, zones, 0.35),
@@ -334,7 +336,7 @@ function Rocks({ quality, zones }: { quality: Tier; zones: Zone[] }) {
 
   return (
     <instancedMesh ref={ref} args={[geometry, undefined, items.length]} frustumCulled={false} castShadow>
-      <meshStandardMaterial color="#2a332f" roughness={0.95} metalness={0.05} />
+      <meshStandardMaterial color={mixHex(palette.stoneDark, palette.stone, 0.4)} roughness={0.95} metalness={0.05} />
     </instancedMesh>
   );
 }

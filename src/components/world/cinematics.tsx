@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { hash01 } from "@/lib/world/anim";
 import { useWorldState } from "@/lib/world/store";
+import { mixHex, useSceneTheme } from "@/lib/world/scene-theme";
 
 /**
  * Reusable cinematic primitives shared across the locations. Each one animates
@@ -75,6 +76,8 @@ export function OrbitRing({
   opacity = 0.7,
 }: OrbitRingProps) {
   const ref = useRef<THREE.Mesh>(null);
+  const palette = useSceneTheme();
+  const ringColor = palette.isLight ? mixHex(color, "#1c3f38", 0.5) : color;
   useFrame((state, delta) => {
     if (!ref.current) return;
     ref.current.rotation.z += delta * speed;
@@ -85,11 +88,11 @@ export function OrbitRing({
     <mesh ref={ref} position={position} rotation={[tilt, 0, 0]}>
       <torusGeometry args={[radius, 0.02, 8, 40]} />
       <meshBasicMaterial
-        color={color}
+        color={ringColor}
         transparent
         opacity={opacity}
         depthWrite={false}
-        blending={THREE.AdditiveBlending}
+        blending={palette.effectBlending}
         toneMapped={false}
       />
     </mesh>
@@ -115,6 +118,8 @@ export function RiseBeam({
   speed = 1.1,
 }: RiseBeamProps) {
   const ref = useRef<THREE.Mesh>(null);
+  const palette = useSceneTheme();
+  const beamColor = palette.isLight ? mixHex(color, "#1c3f38", 0.45) : color;
   useFrame((state) => {
     if (!ref.current) return;
     const material = ref.current.material as THREE.MeshBasicMaterial;
@@ -124,12 +129,12 @@ export function RiseBeam({
     <mesh ref={ref} position={[position[0], position[1] + height / 2, position[2]]}>
       <cylinderGeometry args={[radius * 0.35, radius, height, 20, 1, true]} />
       <meshBasicMaterial
-        color={color}
+        color={beamColor}
         transparent
         opacity={opacity}
         depthWrite={false}
         side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
+        blending={palette.effectBlending}
         toneMapped={false}
       />
     </mesh>

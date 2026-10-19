@@ -1,18 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
+import { EntrancePrompt } from "@/components/world/EntrancePrompt";
+import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { EmberField, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#ffb36b";
 
 const POSES: Record<string, CameraPose> = {
+  entrance: { position: [0, 3, 17], lookAt: [0, 2.8, 12] },
   overview: { position: [0, 3, 10], lookAt: [0, 1.2, 0] },
   stations: { position: [0, 2.2, 7], lookAt: [0, 1, 0] },
   left: { position: [-2.5, 2, 6], lookAt: [-4, 1, 0] },
@@ -122,31 +128,39 @@ function ForgeStation({
   active: boolean;
 }) {
   const glowRef = useRef<THREE.Mesh>(null);
+  const palette = useSceneTheme();
   useFrame(({ clock }) => {
     if (!glowRef.current) return;
     const t = clock.elapsedTime;
     const material = glowRef.current.material as THREE.MeshStandardMaterial;
-    material.emissiveIntensity = active ? 2.4 : 1 + Math.sin(t * 1.8 + station.position[0]) * 0.3;
+    material.emissiveIntensity = (active ? 2.4 : 1 + Math.sin(t * 1.8 + station.position[0]) * 0.3) * palette.glow;
   });
 
   return (
     <group position={station.position}>
       {/* Base platform */}
-      <mesh position={[0, 0.15, 0]}>
+      <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.9, 1.1, 0.3, 8]} />
-        <meshStandardMaterial color="#14201c" roughness={0.85} />
+        <meshStandardMaterial color={palette.stone} roughness={0.85} />
       </mesh>
       {/* Workbench surface */}
-      <mesh position={[0, 0.55, 0]}>
+      <mesh position={[0, 0.55, 0]} castShadow>
         <boxGeometry args={[1.6, 0.12, 1]} />
-        <meshStandardMaterial color="#0f1c18" roughness={0.8} metalness={0.1} />
+        <meshStandardMaterial color={palette.metal} roughness={0.7} metalness={0.25} />
       </mesh>
+      {/* Bench supports */}
+      {[-0.6, 0.6].map((x) => (
+        <mesh key={x} position={[x, 0.35, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.42, 0.7]} />
+          <meshStandardMaterial color={palette.stoneDark} roughness={0.9} />
+        </mesh>
+      ))}
       {/* Glowing core */}
       <mesh ref={glowRef} position={[0, 1, 0]}>
         <octahedronGeometry args={[0.28, 0]} />
         <meshStandardMaterial
-          color="#121f1b"
-          emissive={station.accent}
+          color={palette.plinth}
+          emissive={palette.accent(station.accent)}
           emissiveIntensity={1}
           roughness={0.3}
           toneMapped={false}
@@ -165,6 +179,8 @@ function ForgeStation({
 export function ForgeScene() {
   const router = useRouter();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const [inside, setInside] = useState(false);
+  const palette = useSceneTheme({ bg: "#e2d6c4", fog: "#ece1d1" });
 
   const discuss = (service: string) => {
     // Travel to the nexus and open the contact codex on arrival — the world
@@ -174,27 +190,30 @@ export function ForgeScene() {
   };
 
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
-        cameraPosition={POSES.overview.position}
+        cameraPosition={POSES.entrance.position}
         cameraFov={44}
-        background="#0c0906"
-        fog={{ color: "#100c08", density: 0.045 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
       >
-        <LightRig keyColor="#ffe0b8" fillColor={ACCENT} intensity={0.8} />
-        <CameraDirector pose={pose as string} poses={POSES} />
-        <AmbientMotes color="#ffcf9a" radius={6} height={4.5} count={90} size={0.15} />
+        <LightRig fillColor={ACCENT} intensity={0.8} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <AmbientMotes color={palette.mote} radius={6} height={4.5} count={90} size={0.15} />
+
+        {/* The temple entrance into the forge */}
+        <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={inside} />
 
         {/* Forge floor */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[9, 48]} />
-          <meshStandardMaterial color="#120e0a" roughness={0.95} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Central forge pit glow */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[0.8, 1.6, 32]} />
-          <meshStandardMaterial color="#1a1208" emissive={ACCENT} emissiveIntensity={0.5} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(ACCENT)} emissiveIntensity={0.5} side={THREE.DoubleSide} />
         </mesh>
         {/* Living forge: rotating pit ring, rising heat column, and embers */}
         <OrbitRing position={[0, 0.06, 0]} radius={1.2} color={ACCENT} speed={0.35} opacity={0.45} />
@@ -232,7 +251,7 @@ export function ForgeScene() {
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
-        <p className="font-mono text-[0.6rem] tracking-[0.28em] uppercase" style={{ color: ACCENT }}>
+        <p className="font-mono text-[0.6rem] tracking-[0.28em] uppercase" style={{ color: "var(--loc-accent-text)" }}>
           TECHNOLOGY FORGE · SERVICES
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -243,18 +262,35 @@ export function ForgeScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-        {(["overview", "stations", "left", "right"] as const).map((p) => (
+      <EntrancePrompt label="the Forge" open={inside} onEnter={() => setInside(true)} />
+
+      {inside ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
+          {(["overview", "stations", "left", "right"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPose(p)}
+              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            >
+              {p}
+            </button>
+          ))}
           <button
-            key={p}
             type="button"
-            onClick={() => setPose(p)}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            onClick={() => setInside(false)}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
-            {p}
+            Exit temple
           </button>
-        ))}
-      </div>
-    </>
+          <Link
+            href="/"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
+          >
+            Arrival Valley
+          </Link>
+        </div>
+      ) : null}
+    </SceneScope>
   );
 }

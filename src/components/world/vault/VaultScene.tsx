@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
+import { EntrancePrompt } from "@/components/world/EntrancePrompt";
+import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useProjectsResource, type ProjectSummary } from "@/lib/world/content-hooks";
@@ -10,6 +14,8 @@ import { artifactFrom } from "@/lib/world/artifacts";
 import { progressActions, useProgress } from "@/lib/world/progress";
 import { worldActions } from "@/lib/world/store";
 import { useMediaQuery } from "@/lib/hooks";
+import { useSceneTheme } from "@/lib/world/scene-theme";
+import { mixHex } from "@/lib/world/scene-theme";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
 
 const ACCENT = "#6bffd0";
@@ -22,23 +28,37 @@ function Artifact({
   accent,
   index,
   collected = false,
+  shape = "artifact",
 }: {
   position: [number, number, number];
   accent: string;
   index: number;
   collected?: boolean;
+  shape?: "shard" | "artifact" | "relic";
 }) {
+  const palette = useSceneTheme();
+  const glow = palette.accent(accent);
+  const crystalColor = mixHex(palette.metal, glow, collected ? 0.35 : 0.2);
   return (
     <group position={position}>
-      <mesh position={[0, 0.15, 0]}>
-        <cylinderGeometry args={[0.55, 0.7, 0.3, 8]} />
-        <meshStandardMaterial color="#0f1f1b" roughness={0.85} />
+      {/* Stacked stone plinth with a carved band */}
+      <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.62, 0.78, 0.24, 8]} />
+        <meshStandardMaterial color={palette.plinth} roughness={0.9} flatShading />
+      </mesh>
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <cylinderGeometry args={[0.46, 0.58, 0.16, 8]} />
+        <meshStandardMaterial color={palette.stone} roughness={0.85} flatShading />
+      </mesh>
+      <mesh position={[0, 0.4, 0]}>
+        <torusGeometry args={[0.42, 0.03, 6, 16]} />
+        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={0.9 * palette.glow} toneMapped={false} />
       </mesh>
       {/* Containment beam rising from the pedestal */}
-      <RiseBeam position={[0, 0.3, 0]} color={accent} radius={0.5} height={2.1} opacity={0.09} speed={1 + index * 0.12} />
+      <RiseBeam position={[0, 0.4, 0]} color={accent} radius={0.5} height={2.0} opacity={0.08} speed={1 + index * 0.12} />
       {/* Orbiting scan ring around the crystal — brighter once collected */}
       <OrbitRing
-        position={[0, 0.85, 0]}
+        position={[0, 0.95, 0]}
         radius={0.64}
         color={accent}
         speed={0.5 + index * 0.06}
@@ -46,19 +66,55 @@ function Artifact({
         opacity={collected ? 0.85 : 0.5}
       />
       <Floater amplitude={0.09} speed={0.7} phase={index * 1.3} spin={0.45 + index * 0.08}>
-        <mesh position={[0, 0.85, 0]} rotation={[0, index * 0.7, 0.2]}>
-          <octahedronGeometry args={[0.38, 0]} />
-          <meshStandardMaterial
-            color="#0d2420"
-            emissive={accent}
-            emissiveIntensity={collected ? 2.2 : 1.6}
-            roughness={0.25}
-            metalness={0.2}
-            toneMapped={false}
-          />
-        </mesh>
+        <group position={[0, 0.95, 0]} rotation={[0, index * 0.7, 0.2]}>
+          {shape === "relic" ? (
+            <mesh>
+              <icosahedronGeometry args={[0.42, 0]} />
+              <meshStandardMaterial
+                color={crystalColor}
+                emissive={glow}
+                emissiveIntensity={(collected ? 1.9 : 1.3) * palette.glow}
+                roughness={0.22}
+                metalness={0.35}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+          ) : shape === "shard" ? (
+            <mesh>
+              <octahedronGeometry args={[0.4, 0]} />
+              <meshStandardMaterial
+                color={crystalColor}
+                emissive={glow}
+                emissiveIntensity={(collected ? 2.2 : 1.6) * palette.glow}
+                roughness={0.25}
+                metalness={0.2}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+          ) : (
+            <mesh>
+              <dodecahedronGeometry args={[0.38, 0]} />
+              <meshStandardMaterial
+                color={crystalColor}
+                emissive={glow}
+                emissiveIntensity={(collected ? 2.0 : 1.5) * palette.glow}
+                roughness={0.24}
+                metalness={0.3}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+          )}
+          {/* Inner light core */}
+          <mesh scale={0.45}>
+            <icosahedronGeometry args={[0.4, 1]} />
+            <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={1.4 * palette.glow} toneMapped={false} />
+          </mesh>
+        </group>
       </Floater>
-      <pointLight position={[0, 1, 0]} color={accent} intensity={collected ? 4 : 3} distance={4} decay={2} />
+      <pointLight position={[0, 1.1, 0]} color={accent} intensity={collected ? 4 : 3} distance={4} decay={2} />
     </group>
   );
 }
@@ -108,9 +164,11 @@ export function VaultScene() {
   const { status, data: projects, reload } = useProjectsResource();
   const progress = useProgress();
   const [pose, setPose] = useState<PoseId>("overview");
+  const [inside, setInside] = useState(false);
   // Portrait phones can't fit the wide desktop arc — tighten it and pull the
   // camera back so every artifact stays on screen.
   const portrait = useMediaQuery("(max-aspect-ratio: 1/1)");
+  const palette = useSceneTheme({ bg: "#dbddcd", fog: "#e5e7d8" });
 
   const visible = useMemo(() => projects.slice(0, 6), [projects]);
   const count = visible.length;
@@ -132,12 +190,14 @@ export function VaultScene() {
     () =>
       portrait
         ? {
+            entrance: { position: [0, 2.6, 18], lookAt: [0, 2.6, 13] },
             overview: { position: [0, 2.4, 15], lookAt: [0, 1.1, -1] },
             close: { position: [0, 2.0, 11.5], lookAt: [0, 1.1, -1] },
             left: { position: [-2.6, 2.1, 12], lookAt: [-2.2, 1.1, -1] },
             right: { position: [2.6, 2.1, 12], lookAt: [2.2, 1.1, -1] },
           }
         : {
+            entrance: { position: [0, 2.8, 17], lookAt: [0, 2.8, 13] },
             overview: { position: [0, 2.8, 9.5], lookAt: [0, 1.3, 0] },
             close: { position: [0, 2, 6], lookAt: [0, 1.2, -1] },
             left: { position: [-2.5, 2, 6], lookAt: [-3.5, 1.2, -1] },
@@ -149,28 +209,31 @@ export function VaultScene() {
   const hasArtifacts = status === "ready" && count > 0;
 
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
-        cameraPosition={POSE_STATES.overview.position}
+        cameraPosition={POSE_STATES.entrance.position}
         cameraFov={44}
-        background="#050e0c"
-        fog={{ color: "#061210", density: 0.048 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
       >
-        <LightRig keyColor="#c8efe6" fillColor={ACCENT} intensity={0.8} />
-        <CameraDirector pose={pose as string} poses={POSE_STATES} />
+        <LightRig fillColor={ACCENT} intensity={0.8} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSE_STATES} />
+
+        {/* The temple entrance into the vault */}
+        <TempleEntrance position={[0, 0, 13]} accent={ACCENT} open={inside} />
 
         {/* Vault floor */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[9, 48]} />
-          <meshStandardMaterial color="#0a1614" roughness={0.95} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Central vault ring */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[1.2, 2.4, 40]} />
           <meshStandardMaterial
-            color="#0c1f1b"
-            emissive={ACCENT}
+            color={palette.stoneDark}
+            emissive={palette.accent(ACCENT)}
             emissiveIntensity={0.3}
             side={2}
           />
@@ -183,7 +246,7 @@ export function VaultScene() {
           const pos = positions[i];
           return (
             <group key={project.slug}>
-              <Artifact position={pos} accent={accent} index={i} collected={collected} />
+              <Artifact position={pos} accent={accent} index={i} collected={collected} shape={artifact.rarity} />
               <Hotspot3D
                 position={[pos[0], 1.3, pos[2]]}
                 radius={0.8}
@@ -218,7 +281,7 @@ export function VaultScene() {
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
-        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: ACCENT }}>
+        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           ARTIFACT VAULT · PROJECTS
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -253,30 +316,47 @@ export function VaultScene() {
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
-        {hasArtifacts
-          ? (["overview", "close", "left", "right"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPose(p)}
-                className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
-              >
-                {p}
-              </button>
-            ))
-          : null}
-        {hasArtifacts ? (
+      <EntrancePrompt label="the Vault" open={inside} onEnter={() => setInside(true)} />
+
+      {inside ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
+          {hasArtifacts
+            ? (["overview", "close", "left", "right"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPose(p)}
+                  className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+                >
+                  {p}
+                </button>
+              ))
+            : null}
+          {hasArtifacts ? (
+            <button
+              type="button"
+              onClick={() => worldActions.openCodex("work")}
+              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] uppercase transition hover:text-accent"
+              style={{ color: ACCENT }}
+            >
+              Artifact index
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => worldActions.openCodex("work")}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] uppercase transition hover:text-accent"
-            style={{ color: ACCENT }}
+            onClick={() => setInside(false)}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
-            Artifact index
+            Exit temple
           </button>
-        ) : null}
-      </div>
-    </>
+          <Link
+            href="/"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
+          >
+            Arrival Valley
+          </Link>
+        </div>
+      ) : null}
+    </SceneScope>
   );
 }

@@ -255,7 +255,7 @@
     position: relative;
     overflow: hidden;
     background: linear-gradient(120deg, var(--cyan), var(--turquoise));
-    color: var(--accent-ink);
+    color: var(--abyss);
     box-shadow: 0 18px 40px -22px rgba(99, 245, 231, 0.9);
   }
 
@@ -1296,4 +1296,36 @@ body.in-world > footer {
 
 .codex-body .panel {
   background: var(--panel);
+}
+
+/* ------------------------------------------------------------------
+   Theme cross-fade: the semantic palette eases between light and dark
+   instead of snapping. Respects reduced-motion (instant switch).
+------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition:
+      background-color 0.45s ease,
+      color 0.45s ease;
+  }
+}
+
+/* ------------------------------------------------------------------
+   World HUD scope: every 3D location sets `--loc-accent` on this wrapper.
+   `--loc-accent-text` is tuned per theme so location labels stay legible
+   whether the world is lit by bioluminescence or daylight — bright neon
+   cyan is unreadable on a pale scene, so it darkens by day.
+------------------------------------------------------------------- */
+.world-scope {
+  --loc-accent-text: var(--loc-accent, var(--accent));
+}
+
+[data-theme="light"] .world-scope {
+  --loc-accent-text: color-mix(in srgb, var(--loc-accent, var(--accent)) 48%, #16342f);
+}
+
+/* Daylit scenes sit on a pale sky; the HUD veil (map / codex backdrops)
+   should follow the theme rather than staying midnight. */
+[data-theme="light"] .world-scope .panel {
+  background-color: color-mix(in srgb, var(--panel-solid) 88%, transparent);
 }

@@ -67,6 +67,14 @@ function readExploreMode(): boolean {
 }
 
 const HINT_KEY = "world-hint";
+const LOCATION_NAV_LABELS: Partial<Record<LocationId, string>> = {
+  temple: "About",
+  observatory: "Skills",
+  forge: "Services",
+  vault: "Portfolio",
+  sanctuary: "Insights",
+  nexus: "Contact",
+};
 
 /** First-visit explainer pill — shown once per browser until dismissed. */
 function WorldHint({ accent }: { accent: string }) {
@@ -126,15 +134,20 @@ export function WorldShell({
 }: WorldShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { activeObject, mapOpen, codex, collectionOpen } = useWorldState();
+  const { activeObject, mapOpen, codex, collectionOpen, worldEntry } = useWorldState();
   const progress = useProgress();
   const level = levelFromXp(progress.xp);
 
   // Client-only capabilities via useSyncExternalStore (SSR-safe snapshots).
-  // Server snapshot for webglOk is `false`: the server can't know about WebGL,
-  // so it must render the SEO/no-JS fallback (which carries the page's <h1>).
-  // After hydration React re-reads the real client value and swaps in the scene.
-  const webglOk = useSyncExternalStore(subscribeNothing, readWebgl, () => false);
+  // The server can't know about WebGL, so its snapshot is `null` and it renders
+  // the SEO/no-JS fallback (which carries the page's <h1>). After hydration,
+  // React reads the real client value and swaps in the scene.
+  const webglState = useSyncExternalStore(
+    subscribeNothing,
+    readWebgl,
+    () => null,
+  );
+  const webglOk = webglState === true;
   const exploreMode = useSyncExternalStore(subscribeModeChange, readExploreMode, () => true);
 
   // Quality tier is detected once when the shell first mounts.
@@ -166,6 +179,17 @@ export function WorldShell({
   const location = LOCATION_BY_ID[locationId];
   const showScene = webglOk && exploreMode;
   const showFallback = !hideFallbackInExplore || !exploreMode || !webglOk;
+  const homeNavigationVisible =
+    locationId !== "arrival" ||
+    worldEntry === "inside" ||
+    webglState === false ||
+    !exploreMode;
+
+  useEffect(() => {
+    if (locationId === "arrival" && (webglState === false || !exploreMode)) {
+      worldActions.completeWorldEntry();
+    }
+  }, [locationId, webglState, exploreMode]);
 
   useEffect(() => {
     document.body.classList.toggle("in-world", showScene);
@@ -205,7 +229,8 @@ export function WorldShell({
           Sits directly *below* the site navbar (h-16 / md:h-[4.5rem]) so the
           location pill and world controls never land on top of the brand,
           nav links, theme toggle or contact CTA. */}
-      <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex items-start justify-between gap-3 p-3 md:top-[4.5rem] sm:p-4">
+      {homeNavigationVisible ? (
+        <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex items-start justify-between gap-3 p-3 md:top-[4.5rem] sm:p-4">
         <div className="pointer-events-auto flex flex-col gap-1">
           <p className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.26em] text-dim uppercase">
             {location.number}{" "}
@@ -261,7 +286,8 @@ export function WorldShell({
             </button>
           )}
         </div>
-      </div>
+        </div>
+      ) : null}
 
       {/* ---------- Scene layer ----------
           In normal flow at exactly one viewport tall instead of `fixed`, so
@@ -274,28 +300,35 @@ export function WorldShell({
         <WorldNavSurface className="relative h-dvh w-full shrink-0 overflow-hidden">
           {children}
 
-          <AnimatePresence>{showScene ? <WorldHint accent={accent} /> : null}</AnimatePresence>
+          <AnimatePresence>
+            {showScene && homeNavigationVisible ? <WorldHint accent={accent} /> : null}
+          </AnimatePresence>
 
           {/* Slim accessible nav strip: keyboard/screen-reader users can always
               move between locations. Inside the scene so it scrolls away with
               it instead of parking on top of the footer. */}
-          <nav
-            aria-label="World locations"
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center p-3 pr-24 sm:pr-3"
-          >
-            <ul className="panel pointer-events-auto flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5 scrollbar-none">
-              {siblings.map((entry) => (
-                <li key={entry.id}>
-                  <Link
-                    href={entry.href}
-                    className="flex min-h-11 items-center whitespace-nowrap rounded-full px-3.5 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
-                  >
-                    {entry.title.split(" ").slice(-1)[0]}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {homeNavigationVisible ? (
+            <motion.nav
+              aria-label="World locations"
+              initial={locationId === "arrival" ? { opacity: 0, y: 12 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center p-3 pr-24 sm:pr-3"
+            >
+              <ul className="panel pointer-events-auto flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5 scrollbar-none">
+                {siblings.map((entry) => (
+                  <li key={entry.id}>
+                    <Link
+                      href={entry.href}
+                      className="flex min-h-11 items-center whitespace-nowrap rounded-full px-3.5 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+                    >
+                      {LOCATION_NAV_LABELS[entry.id] ?? entry.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </motion.nav>
+          ) : null}
         </WorldNavSurface>
       ) : null}
 
@@ -308,7 +341,7 @@ export function WorldShell({
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="pointer-events-none fixed inset-0 z-[70]"
           style={{
-            background: `radial-gradient(circle at 50% 55%, ${accent}22, #050d0cee 70%)`,
+            background: `radial-gradient(circle at 50% 55%, ${accent}22, color-mix(in srgb, var(--bg) 92%, transparent) 70%)`,
           }}
         />
       </AnimatePresence>

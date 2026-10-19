@@ -1,18 +1,20 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
+import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions, useWorldState } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useSceneTheme, mixHex } from "@/lib/world/scene-theme";
 import { Campsite } from "./Campsite";
 import { Forest } from "./Forest";
 
 const ACCENT = "#63f5e7";
 
 const POSES: Record<string, CameraPose> = {
-  intro: { position: [0, 4.8, 15], lookAt: [0, 1.6, 0] },
+  entrance: { position: [0, 6.2, 35], lookAt: [0, 4.3, 17] },
   overview: { position: [0, 3.2, 10], lookAt: [0, 1.2, 0] },
   map: { position: [0, 2.2, 6.5], lookAt: [0, 1, 0] },
   camp: { position: [-1.5, 2.4, 8.0], lookAt: [-4.6, 0.7, 2.4] },
@@ -23,15 +25,16 @@ const POSES: Record<string, CameraPose> = {
 
 /** Glowing path strip on the valley floor. */
 function ValleyPath() {
+  const palette = useSceneTheme();
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[24, 14]} />
-        <meshStandardMaterial color="#0a1815" roughness={0.95} />
+        <meshStandardMaterial color={palette.floor} roughness={0.95} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
         <planeGeometry args={[20, 1.2]} />
-        <meshStandardMaterial color="#0a1a17" emissive={ACCENT} emissiveIntensity={0.14} />
+        <meshStandardMaterial color={palette.floorDeep} emissive={palette.accent(ACCENT)} emissiveIntensity={0.14} />
       </mesh>
     </group>
   );
@@ -45,15 +48,16 @@ function FloatingIsland({
   position: [number, number, number];
   scale?: number;
 }) {
+  const palette = useSceneTheme();
   return (
     <group position={position} scale={scale}>
       <mesh>
         <coneGeometry args={[1.2, 1.8, 6]} />
-        <meshStandardMaterial color="#0f2622" roughness={1} />
+        <meshStandardMaterial color={palette.stoneDark} roughness={1} flatShading />
       </mesh>
       <mesh position={[0, -1, 0]} rotation={[Math.PI, 0, 0]}>
         <coneGeometry args={[0.9, 1, 6]} />
-        <meshStandardMaterial color="#0a1a17" emissive={ACCENT} emissiveIntensity={0.25} />
+        <meshStandardMaterial color={palette.floorDeep} emissive={palette.accent(ACCENT)} emissiveIntensity={0.25} />
       </mesh>
     </group>
   );
@@ -61,15 +65,16 @@ function FloatingIsland({
 
 /** The distant temple silhouette visible from the valley. */
 function DistantTemple() {
+  const palette = useSceneTheme();
   return (
     <group position={[-6, 0, -4]}>
       <mesh position={[0, 1.8, 0]}>
         <boxGeometry args={[2.4, 3.6, 2]} />
-        <meshStandardMaterial color="#0c1e1b" roughness={0.95} />
+        <meshStandardMaterial color={palette.stoneDark} roughness={0.95} flatShading />
       </mesh>
       <mesh position={[0, 4, 0]}>
         <coneGeometry args={[1.9, 1.6, 4]} />
-        <meshStandardMaterial color="#0a1916" emissive="#8fd8ff" emissiveIntensity={0.3} />
+        <meshStandardMaterial color={palette.stone} emissive={palette.accent("#8fd8ff")} emissiveIntensity={0.3} />
       </mesh>
       <pointLight position={[0, 4.5, 0.5]} color="#8fd8ff" intensity={3} distance={6} decay={2} />
     </group>
@@ -78,15 +83,16 @@ function DistantTemple() {
 
 /** Central illuminated map pedestal. */
 function MapPedestal() {
+  const palette = useSceneTheme();
   return (
     <group position={[0, 0, 0]}>
-      <mesh position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.7, 0.9, 1, 8]} />
-        <meshStandardMaterial color="#10221f" roughness={0.85} />
+        <meshStandardMaterial color={palette.stone} roughness={0.85} flatShading />
       </mesh>
       <mesh position={[0, 1.1, 0]}>
         <cylinderGeometry args={[0.55, 0.55, 0.1, 8]} />
-        <meshStandardMaterial color="#0d2824" emissive={ACCENT} emissiveIntensity={1} toneMapped={false} />
+        <meshStandardMaterial color={palette.plinth} emissive={palette.accent(ACCENT)} emissiveIntensity={1 * palette.glow} toneMapped={false} />
       </mesh>
       <pointLight position={[0, 1.5, 0]} color={ACCENT} intensity={3} distance={5} decay={2} />
     </group>
@@ -101,12 +107,13 @@ function GlowCrystals({
   position: [number, number, number];
   color?: string;
 }) {
+  const palette = useSceneTheme();
   return (
     <group position={position}>
       {[0, 1, 2].map((i) => (
         <mesh key={i} position={[i * 0.3 - 0.3, 0.3 + i * 0.12, i * 0.15 - 0.15]} rotation={[0.2 * i, i, 0.1]}>
           <octahedronGeometry args={[0.18 - i * 0.03, 0]} />
-          <meshStandardMaterial color="#0d2f2a" emissive={color} emissiveIntensity={1.8} toneMapped={false} />
+          <meshStandardMaterial color={mixHex(palette.stoneDark, color, 0.35)} emissive={palette.accent(color)} emissiveIntensity={1.8 * palette.glow} toneMapped={false} />
         </mesh>
       ))}
       <pointLight position={[0, 0.5, 0]} color={color} intensity={2.5} distance={3.5} decay={2} />
@@ -123,27 +130,51 @@ function GlowCrystals({
  */
 export function ArrivalScene() {
   const reduced = usePrefersReducedMotion();
-  const { quality } = useWorldState();
-  const [pose, setPose] = useState<keyof typeof POSES>(reduced ? "overview" : "intro");
+  const { quality, worldEntry } = useWorldState();
+  const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const palette = useSceneTheme({ bg: "#d6ddd0", fog: "#dfe6da" });
 
-  // Opening dolly: start wide, ease into the hero framing just after mount.
-  useEffect(() => {
-    if (reduced) return;
-    const timer = window.setTimeout(() => setPose("overview"), 350);
-    return () => window.clearTimeout(timer);
-  }, [reduced]);
+  const handlePoseComplete = useCallback(
+    (completedPose: string) => {
+      if (completedPose === "overview" && worldEntry === "entering") {
+        worldActions.completeWorldEntry();
+      }
+    },
+    [worldEntry],
+  );
 
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
-        cameraPosition={reduced ? POSES.overview.position : POSES.intro.position}
+        cameraPosition={POSES.entrance.position}
         cameraFov={46}
-        background="#050d0c"
-        fog={{ color: "#07110f", density: 0.04 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
+        interactive={worldEntry === "inside"}
       >
-        <LightRig keyColor="#cfeee8" fillColor={ACCENT} intensity={0.85} />
-        <CameraDirector pose={pose as string} poses={POSES} reduced={reduced} />
+        <LightRig fillColor={ACCENT} intensity={0.85} />
+        <CameraDirector
+          pose={worldEntry === "outside" ? "entrance" : pose}
+          poses={POSES}
+          reduced={reduced}
+          allowSteering={worldEntry === "inside"}
+          onPoseComplete={handlePoseComplete}
+        />
+
+        {/* The main world gate is deliberately larger than every destination entrance. */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 17]}>
+          <planeGeometry args={[20, 18]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.96} />
+        </mesh>
+        <TempleEntrance
+          position={[0, 0, 17]}
+          accent={ACCENT}
+          open={worldEntry !== "outside"}
+          width={6.2}
+          height={6.8}
+          scale={1.2}
+        />
 
         <ValleyPath />
         <DistantTemple />
@@ -247,21 +278,19 @@ export function ArrivalScene() {
         />
       </SceneCanvas>
 
-      {/* Scrim: keeps the headline readable where emissive props sit behind it */}
+      {/* A light, top-weighted veil keeps the outside headline legible without hiding the gate. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 backdrop-blur-[2px]"
+        className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(56% 52% at 50% 46%, color-mix(in srgb, var(--bg) 78%, transparent) 0%, color-mix(in srgb, var(--bg) 48%, transparent) 60%, transparent 84%)",
+          background: worldEntry === "outside"
+            ? "linear-gradient(180deg, color-mix(in srgb, var(--bg) 34%, transparent), transparent 72%)"
+            : "transparent",
         }}
       />
 
-      {/* Hero copy overlay.
-          Padded clear of the navbar + world HUD on top and the location strip
-          at the bottom, so it centres inside the *available* band instead of
-          colliding with the chrome on short or narrow screens. */}
-      <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-32 pb-28 text-center sm:pt-36">
+      {worldEntry === "outside" ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-32 pb-28 text-center sm:pt-36">
         <div className="flex w-full max-w-2xl flex-col items-center gap-5 sm:gap-6">
           <p className="font-mono text-[0.62rem] tracking-[0.3em] text-accent uppercase">
             NEBULA · THE DIGITAL FRONTIER
@@ -273,34 +302,21 @@ export function ArrivalScene() {
             I&apos;m Saiful — a full-stack web developer building modern websites, applications and
             digital systems.
           </p>
-          <div className="hidden flex-wrap items-center justify-center gap-3 sm:flex">
-            <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
-              100+ projects shipped
-            </span>
-            <span className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase">
-              1.5 years experience
-            </span>
-          </div>
           <div className="pointer-events-auto mt-1 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => {
-                setPose("map");
-                worldActions.toggleMap(true);
+                setPose("overview");
+                worldActions.beginWorldEntry();
               }}
               className="btn-primary"
             >
-              Explore the World
+              Enter World
             </button>
-            <Link href="/work" className="btn-ghost">
-              Discover My Work
-            </Link>
-            <Link href="/contact" className="btn-ghost">
-              Hire Me
-            </Link>
           </div>
         </div>
       </div>
-    </>
+      ) : null}
+    </SceneScope>
   );
 }

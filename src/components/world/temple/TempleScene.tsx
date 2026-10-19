@@ -1,26 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { RiseBeam } from "@/components/world/cinematics";
+import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import {
-  CameraDirector,
-  Hotspot3D,
-  LightRig,
-  type CameraPose,
-} from "@/components/world/Interactive";
-import {
+  CarvedReliefs,
   GlyphOrbit,
+  GroundShadow,
   HoloRing,
   Pillar,
+  Rubble,
   TempleDoor,
   TempleFloor,
+  TempleSteps,
   TempleWalls,
 } from "@/components/world/temple/TempleGeometry";
 import { worldActions } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#8fd8ff";
 
@@ -28,9 +30,9 @@ const POSES: Record<string, CameraPose> = {
   // Looking at the closed doorway from outside.
   approach: { position: [0, 2.4, 11], lookAt: [0, 2, 0] },
   // Standing in the threshold as doors open.
-  threshold: { position: [0, 2.1, 5.5], lookAt: [0, 1.8, -2] },
+  threshold: { position: [0, 2.1, 4], lookAt: [0, 1.8, -0.5] },
   // Inside the chamber, facing the archive dais.
-  interior: { position: [0, 2.2, 1.5], lookAt: [0, 1.6, -4.5] },
+  interior: { position: [0, 2.2, -1.7], lookAt: [0, 1.6, -4.5] },
   // Turned toward the philosophy alcove on the left.
   philosophy: { position: [-1.8, 2, -0.5], lookAt: [-4.5, 1.5, -3.5] },
   // Turned toward the journey archive on the right.
@@ -45,61 +47,77 @@ const POSES: Record<string, CameraPose> = {
 export function TempleScene() {
   const router = useRouter();
   const reduced = usePrefersReducedMotion();
-  const [pose, setPose] = useState<"approach" | "threshold" | "interior" | "philosophy" | "journey">(
-    "approach",
-  );
+  const palette = useSceneTheme({ bg: "#e1dccb", fog: "#e9e4d4" });
+  const [pose, setPose] = useState<keyof typeof POSES>("approach");
   const [doorsOpen, setDoorsOpen] = useState(false);
+  const [inside, setInside] = useState(false);
 
-  const enterTemple = () => {
-    setDoorsOpen(true);
-    setPose("threshold");
-    window.setTimeout(() => setPose("interior"), reduced ? 0 : 700);
-  };
+  const handlePoseComplete = useCallback((completedPose: string) => {
+    if (completedPose === "threshold") {
+      setPose("interior");
+    } else if (completedPose === "interior") {
+      setInside(true);
+    }
+  }, []);
 
   const exitTemple = () => {
-    setPose("approach");
+    setInside(false);
     setDoorsOpen(false);
-    router.push("/");
+    setPose("approach");
   };
 
+  const entering = pose === "threshold" || (pose === "interior" && !inside);
+
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
         cameraPosition={POSES.approach.position}
         cameraFov={44}
-        background="#08130f"
-        fog={{ color: "#0c1c18", density: 0.03 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
+        interactive={inside}
       >
-        <LightRig keyColor="#cfe9f2" fillColor="#8fd8ff" intensity={1.35} />
-        <CameraDirector pose={pose} poses={POSES} reduced={reduced} />
-        <AmbientMotes color="#cfe9f2" radius={5.5} height={4} count={70} size={0.12} />
+        <LightRig fillColor={ACCENT} intensity={1.35} />
+        <CameraDirector
+          pose={pose}
+          poses={POSES}
+          reduced={reduced}
+          allowSteering={inside}
+          onPoseComplete={handlePoseComplete}
+        />
+        <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.12} />
 
         {/* Interior fill — lifts the chamber just enough to read the stone,
-            the alcoves and the dais without losing the dark, ancient mood. */}
-        <ambientLight intensity={0.35} color="#bfe0dd" />
-        <pointLight position={[0, 3.9, -2]} intensity={16} distance={24} decay={2} color="#b6e2ea" />
-        <pointLight position={[0, 3.2, 4.5]} intensity={9} distance={18} decay={2} color={ACCENT} />
+            the alcoves and the dais without losing the ancient mood. */}
+        <ambientLight intensity={palette.ambientIntensity * 0.9} color={palette.ambient} />
+        <pointLight position={[0, 3.9, -2]} intensity={12} distance={24} decay={2} color={palette.key} />
 
-        <TempleFloor />
+        <TempleFloor width={14} depth={16} />
         <TempleWalls />
+        <CarvedReliefs />
+        <TempleSteps />
+        <Rubble origin={[0, 0, 3]} count={14} spread={5} />
 
         {/* Exterior pillars flanking the approach path */}
-        <Pillar position={[-2.6, 0, 7]} height={3.4} accent={ACCENT} />
-        <Pillar position={[2.6, 0, 7]} height={3.4} accent={ACCENT} />
-        <Pillar position={[-3.4, 0, 4]} height={3} accent={ACCENT} />
-        <Pillar position={[3.4, 0, 4]} height={3} accent={ACCENT} />
+        <Pillar position={[-2.6, 0, 7]} height={3.4} accent={ACCENT} variant={1} />
+        <Pillar position={[2.6, 0, 7]} height={3.4} accent={ACCENT} variant={2} />
+        <Pillar position={[-3.4, 0, 4]} height={3} accent={ACCENT} variant={3} />
+        <Pillar position={[3.4, 0, 4]} height={3} accent={ACCENT} variant={4} />
 
         {/* Interior pillars */}
-        <Pillar position={[-4, 0, -3]} height={3.6} accent={ACCENT} />
-        <Pillar position={[4, 0, -3]} height={3.6} accent={ACCENT} />
+        <Pillar position={[-4, 0, -3]} height={3.6} accent={ACCENT} variant={5} />
+        <Pillar position={[4, 0, -3]} height={3.6} accent={ACCENT} variant={6} />
 
-        {/* The great doorway */}
+        {/* The great doorway — the temple's entrance */}
         <TempleDoor open={doorsOpen} accent={ACCENT} />
+        <pointLight position={[0, 2, 1.2]} intensity={palette.isLight ? 3 : 6} distance={9} decay={2} color={ACCENT} />
 
         {/* ---------- Interactive objects (interior) ---------- */}
         {/* Consecration light rising from the identity dais */}
+        <GroundShadow position={[0, 0.02, -4.2]} size={1.5} opacity={0.3} />
         <RiseBeam position={[0, 0.9, -4.2]} color={ACCENT} radius={0.6} height={2.6} opacity={0.09} speed={0.85} />
+
         {/* Identity Crystal — central dais */}
         <Hotspot3D
           position={[0, 1.5, -4.2]}
@@ -143,6 +161,7 @@ export function TempleScene() {
             actions: [{ label: "See my skills", href: "/skills" }],
           }}
         >
+          <GroundShadow position={[4, 0.02, -3.2]} size={1.2} />
           <HoloRing position={[4, 1.4, -3.2]} radius={0.6} color="#6bffd0" speed={0.55} />
         </Hotspot3D>
 
@@ -165,6 +184,7 @@ export function TempleScene() {
             actions: [{ label: "See what I build", href: "/services" }],
           }}
         >
+          <GroundShadow position={[-4, 0.02, -3.2]} size={1.2} />
           <HoloRing position={[-4, 1.4, -3.2]} radius={0.6} color="#b39dff" speed={0.55} />
         </Hotspot3D>
 
@@ -184,12 +204,14 @@ export function TempleScene() {
               { label: "Go to Arrival Valley", href: "/" },
             ],
           }}
-        />
+        >
+          <GroundShadow position={[0, 0.02, 4.5]} size={1.2} />
+        </Hotspot3D>
       </SceneCanvas>
 
       {/* ---------- HUD ---------- */}
       <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
-        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: ACCENT }}>
+        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           ANCIENT TEMPLE · ABOUT
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -202,21 +224,21 @@ export function TempleScene() {
       </div>
 
       {/* ---------- DOM interaction layer ---------- */}
-      {/* Primary entrance CTA — only while outside */}
-      {pose === "approach" ? (
+      {!inside && !entering ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-28 sm:pb-24">
           <button
             type="button"
-            onClick={enterTemple}
+            onClick={() => {
+              setInside(false);
+              setDoorsOpen(true);
+              setPose("threshold");
+            }}
             className="btn-primary pointer-events-auto"
           >
             Enter the Temple
           </button>
         </div>
-      ) : null}
-
-      {/* Interior navigation hints */}
-      {pose === "interior" || pose === "philosophy" || pose === "journey" ? (
+      ) : inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
           <button
             type="button"
@@ -241,13 +263,26 @@ export function TempleScene() {
           </button>
           <button
             type="button"
-            onClick={exitTemple}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            onClick={() => {
+              exitTemple();
+              router.push("/");
+            }}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple
           </button>
+          <Link
+            href="/"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-ink uppercase transition hover:text-accent"
+          >
+            Arrival Valley
+          </Link>
         </div>
-      ) : null}
-    </>
+      ) : (
+        <div role="status" className="pointer-events-none absolute inset-x-0 bottom-28 z-20 text-center font-mono text-xs tracking-[0.2em] text-ink uppercase">
+          Entering the temple…
+        </div>
+      )}
+    </SceneScope>
   );
 }

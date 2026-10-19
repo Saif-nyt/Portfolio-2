@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 export type RenderQuality = "high" | "low";
+export type WorldEntry = "outside" | "entering" | "inside";
 
 export interface ActiveObject {
   id: string;
@@ -22,6 +23,8 @@ export interface ActiveObject {
 export type CodexSection = "about" | "skills" | "services" | "work" | "insights" | "contact";
 
 interface WorldState {
+  /** Whether the visitor has crossed the Home world gate. */
+  worldEntry: WorldEntry;
   /** Currently open holographic panel, if any. */
   activeObject: ActiveObject | null;
   /** Whether the world map overlay is open. */
@@ -35,6 +38,7 @@ interface WorldState {
 }
 
 let state: WorldState = {
+  worldEntry: "outside",
   activeObject: null,
   mapOpen: false,
   codex: null,
@@ -62,6 +66,7 @@ function getSnapshot(): WorldState {
 // Cached so useSyncExternalStore sees a stable reference (a fresh object each
 // call triggers React's "getServerSnapshot should be cached" infinite-loop guard).
 const SERVER_STATE: WorldState = {
+  worldEntry: "outside",
   activeObject: null,
   mapOpen: false,
   codex: null,
@@ -75,6 +80,16 @@ function getServerSnapshot(): WorldState {
 
 /** Imperative actions — callable from3D callbacks without React state plumbing. */
 export const worldActions = {
+  beginWorldEntry() {
+    if (state.worldEntry !== "outside") return;
+    state = { ...state, worldEntry: "entering" };
+    emit();
+  },
+  completeWorldEntry() {
+    if (state.worldEntry === "inside") return;
+    state = { ...state, worldEntry: "inside" };
+    emit();
+  },
   openPanel(object: ActiveObject) {
     state = { ...state, activeObject: object, mapOpen: false, codex: null, collectionOpen: false };
     emit();

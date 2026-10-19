@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { NAV_LINKS } from "@/lib/site";
+import { useWorldState } from "@/lib/world/store";
 import { ThemeToggle } from "./ThemeToggle";
 
 function subscribeToScroll(callback: () => void) {
@@ -15,7 +16,10 @@ function subscribeToScroll(callback: () => void) {
 
 export function Navbar({ avatar = null }: { avatar?: string | null }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const { worldEntry } = useWorldState();
+  const showSiteNavigation = pathname !== "/" || worldEntry === "inside";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const open = menuOpen && showSiteNavigation;
   const menuRef = useRef<HTMLDivElement | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const scrolled = useSyncExternalStore(
@@ -32,7 +36,7 @@ export function Navbar({ avatar = null }: { avatar?: string | null }) {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
+        setMenuOpen(false);
         toggleRef.current?.focus();
         return;
       }
@@ -71,7 +75,7 @@ export function Navbar({ avatar = null }: { avatar?: string | null }) {
   );
 
   // Close the mobile menu when a compass / map link is activated.
-  const closeMenu = useCallback(() => setOpen(false), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   return (
     <header
@@ -84,7 +88,7 @@ export function Navbar({ avatar = null }: { avatar?: string | null }) {
       <div className="shell flex h-16 items-center justify-between gap-4 md:h-[4.5rem]">
         <Link
           href="/"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
           className="group flex items-center gap-3 rounded-full py-1 pr-3 focus-visible:outline-2"
           aria-label="T. M. Saiful Islam — home"
         >
@@ -111,86 +115,96 @@ export function Navbar({ avatar = null }: { avatar?: string | null }) {
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-          <ul className="flex items-center gap-1">
-            {NAV_LINKS.map((link) => {
-              const active = isActive(link.href);
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    onClick={() => setOpen(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={`relative inline-flex min-h-11 items-center rounded-full px-4 font-display text-sm transition ${
-                      active
-                        ? "text-accent"
-                        : "text-dim hover:text-ink"
-                    }`}
-                  >
-                    {link.label}
-                    <span
-                      aria-hidden="true"
-                      className={`absolute inset-x-4 bottom-1 h-px origin-left transition-transform duration-300 ${
-                        active ? "scale-x-100 bg-accent shadow-[0_0_10px_rgba(99,245,231,0.9)]" : "scale-x-0 bg-transparent"
+          {showSiteNavigation ? (
+            <ul className="flex items-center gap-1">
+              {NAV_LINKS.map((link) => {
+                const active = isActive(link.href);
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onClick={closeMenu}
+                      aria-current={active ? "page" : undefined}
+                      className={`relative inline-flex min-h-11 items-center rounded-full px-4 font-display text-sm transition ${
+                        active
+                          ? "text-accent"
+                          : "text-dim hover:text-ink"
                       }`}
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                    >
+                      {link.label}
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-x-4 bottom-1 h-px origin-left transition-transform duration-300 ${
+                          active ? "scale-x-100 bg-accent shadow-[0_0_10px_rgba(99,245,231,0.9)]" : "scale-x-0 bg-transparent"
+                        }`}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           <div className="ml-2 flex items-center gap-2">
+            {showSiteNavigation ? (
+              <Link
+                href="/"
+                onClick={closeMenu}
+                aria-label="Return to Arrival Valley"
+                title="Arrival Valley"
+                className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent focus-visible:outline-2"
+              >
+                <Compass className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            ) : null}
+            <ThemeToggle />
+            {showSiteNavigation ? (
+              <Link
+                href="/contact"
+                className="btn-primary hidden !min-h-[2.5rem] !px-5 text-sm lg:inline-flex"
+              >
+                Start a Project
+              </Link>
+            ) : null}
+          </div>
+        </nav>
+
+        <div className="flex items-center gap-2 md:hidden">
+          {showSiteNavigation ? (
             <Link
               href="/"
               onClick={closeMenu}
               aria-label="Return to Arrival Valley"
               title="Arrival Valley"
-              className="grid h-10 w-10 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent focus-visible:outline-2"
+              className="grid h-11 w-11 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent"
             >
               <Compass className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <ThemeToggle />
-            <Link
-              href="/contact"
-              className="btn-primary hidden !min-h-[2.5rem] !px-5 text-sm lg:inline-flex"
-            >
-              Start a Project
-            </Link>
-          </div>
-        </nav>
-
-        <div className="flex items-center gap-2 md:hidden">
-          <Link
-            href="/"
-            onClick={closeMenu}
-            aria-label="Return to Arrival Valley"
-            title="Arrival Valley"
-            className="grid h-11 w-11 place-items-center rounded-full border border-line text-dim transition hover:border-linestrong hover:text-accent"
-          >
-            <Compass className="h-4 w-4" aria-hidden="true" />
-          </Link>
+          ) : null}
           <ThemeToggle />
-          <button
-            ref={toggleRef}
-            type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-line bg-panel text-ink"
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            aria-label={open ? "Close navigation menu" : "Open navigation menu"}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open ? (
-              <X className="h-5 w-5" aria-hidden="true" />
-            ) : (
-              <Menu className="h-5 w-5" aria-hidden="true" />
-            )}
-          </button>
+          {showSiteNavigation ? (
+            <button
+              ref={toggleRef}
+              type="button"
+              className="grid h-11 w-11 place-items-center rounded-full border border-line bg-panel text-ink"
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+              onClick={() => setMenuOpen((value) => !value)}
+            >
+              {open ? (
+                <X className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
 
       <div
         id="mobile-menu"
         ref={menuRef}
-        hidden={!open}
+        hidden={!open || !showSiteNavigation}
         className="border-t border-line bg-[var(--veil)] backdrop-blur-md md:hidden"
       >
         <nav aria-label="Mobile" className="shell py-6">
@@ -201,7 +215,7 @@ export function Navbar({ avatar = null }: { avatar?: string | null }) {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    onClick={() => setOpen(false)}
+                    onClick={closeMenu}
                     aria-current={active ? "page" : undefined}
                     className={`flex min-h-[3.5rem] items-center justify-between rounded-2xl px-4 py-4 font-display text-lg transition ${
                       active

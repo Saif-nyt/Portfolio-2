@@ -235,7 +235,7 @@ function ContactFormPanel({ autoFocus, onSendAnother, presetService }: ContactFo
           tabIndex={-1}
           className="flex flex-col items-start gap-5 rounded-2xl border border-linestrong bg-accentsoft px-5 py-6 sm:px-6"
         >
-          <p className="eyebrow">Message sent</p>
+          <p className="eyebrow">Message received</p>
           <p className="text-base leading-relaxed text-ink sm:text-lg">{state.message}</p>
           <button type="button" className="btn-ghost" onClick={onSendAnother}>
             Send another message
@@ -359,9 +359,10 @@ function ContactFormPanel({ autoFocus, onSendAnother, presetService }: ContactFo
               {pending ? null : <Send className="h-4 w-4" aria-hidden="true" />}
               <span>{pending ? "Sending…" : "Send message"}</span>
             </button>
-            <p className="text-xs leading-relaxed text-faint">
-              Fields marked with * are required.
-            </p>
+            <div className="flex flex-col gap-1 text-xs leading-relaxed text-faint">
+              <p>Fields marked with * are required.</p>
+              <p>Your contact details and project message are stored so I can review and respond.</p>
+            </div>
           </div>
         </form>
       )}

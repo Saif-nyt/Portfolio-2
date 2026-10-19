@@ -7,6 +7,7 @@ import { getDotTexture } from "@/components/world/arrival/fx-textures";
 import { hash01 } from "@/lib/world/anim";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 import { useWorldState } from "@/lib/world/store";
+import { useSceneTheme } from "@/lib/world/scene-theme";
 
 interface AmbientMotesProps {
   /** Full-quality particle count (scaled down on the low tier). */
@@ -36,6 +37,8 @@ export function AmbientMotes({
   const group = useRef<THREE.Group>(null);
   const { quality } = useWorldState();
   const reduced = usePrefersReducedMotion();
+  const palette = useSceneTheme();
+  const moteColor = palette.isLight ? palette.mote : color;
 
   const total = quality === "high" ? count : Math.max(12, Math.round(count * 0.4));
 
@@ -69,13 +72,13 @@ export function AmbientMotes({
         </bufferGeometry>
         <pointsMaterial
           map={texture}
-          color={color}
+          color={moteColor}
           size={size}
           sizeAttenuation
           transparent
-          opacity={0.5}
+          opacity={palette.isLight ? 0.4 : 0.5}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          blending={palette.effectBlending}
           toneMapped={false}
         />
       </points>

@@ -11,6 +11,8 @@ import {
   type ActiveObject,
 } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useSceneTheme } from "@/lib/world/scene-theme";
+import { getDotTexture } from "@/components/world/arrival/fx-textures";
 
 interface Hotspot3DProps {
   position: [number, number, number];
@@ -40,9 +42,13 @@ export function Hotspot3D({
   pulse = 1,
 }: Hotspot3DProps) {
   const ringRef = useRef<THREE.Mesh>(null);
-  const orbRef = useRef<THREE.Mesh>(null);
+  const ring2Ref = useRef<THREE.Mesh>(null);
+  const orbRef = useRef<THREE.Group>(null);
+  const coreRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const reduced = usePrefersReducedMotion();
+  const palette = useSceneTheme();
+  const shadowTex = useMemo(() => getDotTexture(), []);
   // Stable per-instance phase so a row of hotspots breathes out of sync.
   const phase = useMemo(() => position[0] * 1.7 + position[2] * 0.9, [position]);
 
@@ -54,10 +60,16 @@ export function Hotspot3D({
       const s = 1 + Math.sin(t * 2) * (hovered ? 0.09 : 0.04);
       ringRef.current.scale.setScalar(s);
     }
+    if (ring2Ref.current) {
+      ring2Ref.current.rotation.z = -t * 0.36;
+    }
     if (orbRef.current) {
       orbRef.current.position.y = 0.15 + Math.sin(t * 1.4) * 0.08;
-      const material = orbRef.current.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = (hovered ? 2.6 : 1.6) + Math.sin(t * 3) * 0.3;
+      orbRef.current.rotation.y += 0.004 * pulse;
+    }
+    if (coreRef.current) {
+      const material = coreRef.current.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = ((hovered ? 2.4 : 1.5) + Math.sin(t * 3) * 0.3) * palette.glow;
     }
   });
 
@@ -79,6 +91,8 @@ export function Hotspot3D({
     document.body.style.cursor = "";
   };
 
+  const orbAccent = palette.accent(accent);
+
   return (
     <group position={position}>
       {/* Invisible hit target — generous for touch. */}
@@ -86,39 +100,85 @@ export function Hotspot3D({
         <sphereGeometry args={[radius, 12, 12]} />
       </mesh>
 
-      {/* Visible ring */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]}>
+      {/* Soft contact shadow so the artifact sits on the floor. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.37, 0]}>
+        <planeGeometry args={[radius * 2.4, radius * 2.4]} />
+        <meshBasicMaterial
+          map={shadowTex}
+          color={palette.isLight ? "#4a4436" : "#000000"}
+          transparent
+          opacity={palette.isLight ? 0.4 : 0.3}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Ground ring — the artifact's dais marking. */}
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
         <torusGeometry args={[radius * 0.85, 0.035, 8, 36]} />
         <meshStandardMaterial
-          color={accent}
-          emissive={accent}
-          emissiveIntensity={hovered ? 2.4 : 1.4}
+          color={orbAccent}
+          emissive={orbAccent}
+          emissiveIntensity={(hovered ? 2.4 : 1.4) * palette.glow}
           toneMapped={false}
         />
       </mesh>
 
-      {/* Floating orb */}
-      <mesh ref={orbRef}>
-        <icosahedronGeometry args={[radius * 0.32, 1]} />
-        <meshStandardMaterial
-          color="#0d2f2a"
-          emissive={accent}
-          emissiveIntensity={1.6}
-          roughness={0.25}
-          metalness={0.2}
+      {/* Tilted containment ring for depth. */}
+      <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]}>
+        <torusGeometry args={[radius * 0.62, 0.018, 6, 28]} />
+        <meshBasicMaterial
+          color={orbAccent}
+          transparent
+          opacity={hovered ? 0.85 : 0.5}
+          depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      <pointLight position={[0, 0.4, 0]} color={accent} intensity={hovered ? 5 : 3} distance={5} decay={2} />
+      {/* Faceted crystal body floating over an emissive core. */}
+      <group ref={orbRef}>
+        <mesh>
+          <octahedronGeometry args={[radius * 0.36, 0]} />
+          <meshStandardMaterial
+            color={palette.metal}
+            emissive={orbAccent}
+            emissiveIntensity={0.35 * palette.glow}
+            roughness={0.2}
+            metalness={0.35}
+            flatShading
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh ref={coreRef} scale={0.55}>
+          <icosahedronGeometry args={[radius * 0.36, 1]} />
+          <meshStandardMaterial
+            color={palette.plinth}
+            emissive={orbAccent}
+            emissiveIntensity={1.5 * palette.glow}
+            roughness={0.25}
+            metalness={0.2}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      <pointLight
+        position={[0, 0.4, 0]}
+        color={accent}
+        intensity={(hovered ? 5 : 3) * (palette.isLight ? 0.7 : 1)}
+        distance={5}
+        decay={2}
+      />
       {children}
     </group>
   );
 }
 
-/** Ambient light rig shared by all zones — cheap, no shadow maps by default. */
+/** Ambient light rig shared by all zones — cheap, no shadow maps by default.
+ *  Reads the active theme so the world switches from bioluminescent night to
+ *  warm daylight instead of staying permanently dark. */
 export function LightRig({
-  keyColor = "#cfeee8",
+  keyColor,
   fillColor = "#63f5e7",
   intensity = 0.9,
 }: {
@@ -126,7 +186,10 @@ export function LightRig({
   fillColor?: string;
   intensity?: number;
 }) {
+  const palette = useSceneTheme();
   const lightRef = useRef<THREE.DirectionalLight>(null);
+  const resolvedKey = palette.isLight ? palette.key : keyColor ?? palette.key;
+  const resolvedKeyIntensity = palette.isLight ? palette.keyIntensity : intensity;
   useFrame(({ camera }) => {
     if (!lightRef.current) return;
     const target = lightRef.current.target;
@@ -137,10 +200,21 @@ export function LightRig({
 
   return (
     <>
-      <ambientLight intensity={0.4} color="#9fd8d2" />
-      <hemisphereLight args={["#0d3330", "#050f0d", 0.45]} />
-      <directionalLight ref={lightRef} position={[-4, 9, 5]} intensity={intensity} color={keyColor} />
-      <directionalLight position={[8, 3, -6]} intensity={0.16} color={fillColor} />
+      <ambientLight intensity={palette.ambientIntensity} color={palette.ambient} />
+      <hemisphereLight
+        args={[palette.hemisphereSky, palette.hemisphereGround, palette.hemisphereIntensity]}
+      />
+      <directionalLight
+        ref={lightRef}
+        position={[-4, 9, 5]}
+        intensity={resolvedKeyIntensity}
+        color={resolvedKey}
+      />
+      <directionalLight
+        position={[8, 3, -6]}
+        intensity={palette.isLight ? palette.fillIntensity : 0.16}
+        color={fillColor}
+      />
     </>
   );
 }
@@ -153,9 +227,9 @@ export interface CameraPose {
 /** Orbit and pitch speeds at full joystick displacement. */
 const YAW_SPEED = 1.6;
 const PITCH_SPEED = 1.1;
-/** Vertical look limits (radians) so the orbit never dives under the floor. */
-const PITCH_MIN = -0.18;
-const PITCH_MAX = 1.32;
+/** Vertical look limits (radians), independent of camera height. */
+const PITCH_MIN = -0.65;
+const PITCH_MAX = 1.25;
 /** Input easing — accelerates in and glides to a stop on release. */
 const INPUT_EASE = 9;
 /** How fast the camera eases toward the steered target (matches idle feel). */
@@ -175,10 +249,14 @@ export function CameraDirector({
   pose,
   poses,
   reduced = false,
+  allowSteering = true,
+  onPoseComplete,
 }: {
   pose: string;
   poses: Record<string, CameraPose>;
   reduced?: boolean;
+  allowSteering?: boolean;
+  onPoseComplete?: (pose: string) => void;
 }) {
   const { camera } = useThree();
   const prefersReduced = usePrefersReducedMotion();
@@ -188,10 +266,12 @@ export function CameraDirector({
   const currentLook = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const offset = useMemo(() => new THREE.Vector3(), []);
   const steer = useRef({ yaw: 0, pitch: 0, ix: 0, iy: 0 });
+  const completedPose = useRef<string | null>(null);
 
   // A new pose re-frames the shot (and travel remounts the scene), so forget any
   // drag steering — the authored composition always starts clean.
   useEffect(() => {
+    completedPose.current = null;
     const s = steer.current;
     s.yaw = 0;
     s.pitch = 0;
@@ -208,7 +288,7 @@ export function CameraDirector({
 
     // Sample the invisible joystick, then ease it so movement ramps in under
     // the finger and glides to a stop when it lifts (frame-rate independent).
-    const input = getMoveInput();
+    const input = allowSteering ? getMoveInput() : { x: 0, y: 0 };
     const ease = 1 - Math.exp(-INPUT_EASE * dt);
     s.ix += (input.x - s.ix) * ease;
     s.iy += (input.y - s.iy) * ease;
@@ -224,17 +304,19 @@ export function CameraDirector({
     offset.set(config.position[0] - lx, config.position[1] - ly, config.position[2] - lz);
     const baseR = offset.length() || 1;
     const basePhi = Math.asin(THREE.MathUtils.clamp(offset.y / baseR, -1, 1));
+    s.pitch = THREE.MathUtils.clamp(s.pitch, PITCH_MIN - basePhi, PITCH_MAX - basePhi);
     const baseTheta = Math.atan2(offset.x, offset.z);
     const theta = baseTheta + s.yaw;
     const phi = THREE.MathUtils.clamp(basePhi + s.pitch, PITCH_MIN, PITCH_MAX);
     const r = THREE.MathUtils.clamp(baseR * Math.exp(-getZoom()), baseR * 0.32, baseR * 2.6);
-    const cosPhi = Math.cos(phi);
-    const ox = Math.sin(theta) * cosPhi * r;
-    const oy = Math.sin(phi) * r;
-    const oz = Math.cos(theta) * cosPhi * r;
+    const cosBasePhi = Math.cos(basePhi);
+    const ox = Math.sin(theta) * cosBasePhi * r;
+    const oy = Math.sin(basePhi) * r;
+    const oz = Math.cos(theta) * cosBasePhi * r;
 
     targetPos.set(lx + ox, Math.max(0.75, ly + oy), lz + oz);
-    targetLook.set(lx, ly, lz);
+    const horizontalDistance = Math.max(0.001, cosBasePhi * r);
+    targetLook.set(lx, targetPos.y - Math.tan(phi) * horizontalDistance, lz);
 
     if (isReduced) {
       camera.position.copy(targetPos);
@@ -244,6 +326,16 @@ export function CameraDirector({
       currentLook.lerp(targetLook, 1 - Math.exp(-dt * FOLLOW_EASE));
     }
     camera.lookAt(currentLook);
+
+    if (
+      onPoseComplete &&
+      completedPose.current !== pose &&
+      camera.position.distanceTo(targetPos) < 0.08 &&
+      currentLook.distanceTo(targetLook) < 0.08
+    ) {
+      completedPose.current = pose;
+      onPoseComplete(pose);
+    }
   });
 
   return null;

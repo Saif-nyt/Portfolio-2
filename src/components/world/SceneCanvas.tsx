@@ -13,6 +13,7 @@ import {
 import * as THREE from "three";
 import { useWorldState } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { GalaxySky } from "@/components/world/GalaxySky";
 
 interface SceneCanvasProps {
   children: ReactNode;
@@ -22,6 +23,8 @@ interface SceneCanvasProps {
   fog?: { color: string; density: number };
   /** Continuous rendering only while something is animating; idle = paused. */
   animate?: boolean;
+  /** Disable pointer interactions during a scene's entry transition. */
+  interactive?: boolean;
 }
 
 let cachedWebgl: boolean | null = null;
@@ -54,6 +57,7 @@ export function SceneCanvas({
   background = "#050d0c",
   fog,
   animate = true,
+  interactive = true,
 }: SceneCanvasProps) {
   const { quality, activeObject, mapOpen, codex } = useWorldState();
   const reduced = usePrefersReducedMotion();
@@ -103,7 +107,11 @@ export function SceneCanvas({
     // `touch-action: none` scopes the world's drag navigation to the canvas:
     // touches here never scroll or zoom, while HUD buttons, links and any
     // overlay outside this element keep their normal browser gestures.
-    <div aria-hidden="true" className="absolute inset-0" style={{ touchAction: "none" }}>
+    <div
+      aria-hidden="true"
+      className="absolute inset-0"
+      style={{ touchAction: "none", pointerEvents: interactive ? "auto" : "none" }}
+    >
       <Canvas
         dpr={dpr}
         frameloop={frameloop}
@@ -122,7 +130,10 @@ export function SceneCanvas({
       >
         <color attach="background" args={[background]} />
         {fog ? <fogExp2 attach="fog" args={[fog.color, fog.density]} /> : null}
-        <Suspense fallback={null}>{children}</Suspense>
+        <Suspense fallback={null}>
+          <GalaxySky quality={quality} reduced={reduced} />
+          {children}
+        </Suspense>
       </Canvas>
     </div>
   );

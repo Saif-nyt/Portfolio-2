@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { SceneScope } from "@/components/world/SceneScope";
+import { EntrancePrompt } from "@/components/world/EntrancePrompt";
+import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useSceneTheme } from "@/lib/world/scene-theme";
 import { SITE } from "@/lib/site";
 
 const ACCENT = "#ff8fb3";
 
 const POSES: Record<string, CameraPose> = {
+  entrance: { position: [0, 2.6, 16], lookAt: [0, 2.6, 11] },
   overview: { position: [0, 2.6, 9], lookAt: [0, 1.4, 0] },
   terminal: { position: [-2, 2, 5.5], lookAt: [-3, 1.2, -1] },
   beacon: { position: [0, 2, 5], lookAt: [0, 1.4, -1] },
@@ -25,20 +31,23 @@ function CommPillar({
   position: [number, number, number];
   accent: string;
 }) {
+  const palette = useSceneTheme();
   return (
     <group position={position}>
-      <mesh position={[0, 0.9, 0]}>
+      <mesh position={[0, 0.9, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.35, 0.5, 1.8, 8]} />
-        <meshStandardMaterial color="#14101a" roughness={0.85} />
+        <meshStandardMaterial color={palette.stone} roughness={0.85} flatShading />
       </mesh>
       <Floater amplitude={0.06} speed={0.9} spin={0.5}>
         <mesh position={[0, 2, 0]}>
-          <sphereGeometry args={[0.32, 16, 16]} />
+          <icosahedronGeometry args={[0.32, 0]} />
           <meshStandardMaterial
-            color="#1a1220"
-            emissive={accent}
-            emissiveIntensity={1.8}
+            color={palette.metal}
+            emissive={palette.accent(accent)}
+            emissiveIntensity={1.6 * palette.glow}
             roughness={0.3}
+            metalness={0.25}
+            flatShading
             toneMapped={false}
           />
         </mesh>
@@ -50,12 +59,12 @@ function CommPillar({
       {/* Base ring */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.55, 0.75, 24]} />
-        <meshStandardMaterial color="#1a1220" emissive={accent} emissiveIntensity={0.6} side={2} />
+        <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(accent)} emissiveIntensity={0.6} side={2} />
       </mesh>
       {/* Decorative label bar */}
       <mesh position={[0, 1.45, 0.36]}>
         <planeGeometry args={[0.5, 0.08]} />
-        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={1.4} toneMapped={false} />
+        <meshStandardMaterial color={palette.accent(accent)} emissive={palette.accent(accent)} emissiveIntensity={1.4 * palette.glow} toneMapped={false} />
       </mesh>
     </group>
   );
@@ -69,29 +78,34 @@ function CommPillar({
  */
 export function NexusScene() {
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const [inside, setInside] = useState(false);
+  const palette = useSceneTheme({ bg: "#ded4d6", fog: "#e8dfe0" });
 
   return (
-    <>
+    <SceneScope accent={ACCENT}>
       <SceneCanvas
-        cameraPosition={POSES.overview.position}
+        cameraPosition={POSES.entrance.position}
         cameraFov={44}
-        background="#0a0610"
-        fog={{ color: "#0d0814", density: 0.045 }}
+        background={palette.bg}
+        fog={{ color: palette.fog, density: palette.fogDensity }}
         animate
       >
-        <LightRig keyColor="#e8d0f0" fillColor={ACCENT} intensity={0.78} />
-        <CameraDirector pose={pose as string} poses={POSES} />
-        <AmbientMotes color={ACCENT} radius={6.5} height={4.5} count={80} />
+        <LightRig fillColor={ACCENT} intensity={0.78} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <AmbientMotes color={palette.mote} radius={6.5} height={4.5} count={80} />
+
+        {/* The temple entrance into the nexus */}
+        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={inside} />
 
         {/* Platform */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[7, 48]} />
-          <meshStandardMaterial color="#100c14" roughness={0.95} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Edge glow ring — overlooks the planet */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
           <ringGeometry args={[5.5, 6.5, 48]} />
-          <meshStandardMaterial color="#160e1c" emissive={ACCENT} emissiveIntensity={0.3} side={2} />
+          <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(ACCENT)} emissiveIntensity={0.3} side={2} />
         </mesh>
         <OrbitRing position={[0, 0.06, 0]} radius={5} color={ACCENT} speed={0.14} opacity={0.26} />
 
@@ -157,7 +171,7 @@ export function NexusScene() {
 
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
-        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: ACCENT }}>
+        <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           COMMUNICATION NEXUS · CONTACT
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
@@ -168,18 +182,35 @@ export function NexusScene() {
         </p>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-        {(["overview", "terminal", "beacon", "email"] as const).map((p) => (
+      <EntrancePrompt label="the Nexus" open={inside} onEnter={() => setInside(true)} />
+
+      {inside ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
+          {(["overview", "terminal", "beacon", "email"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPose(p)}
+              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            >
+              {p}
+            </button>
+          ))}
           <button
-            key={p}
             type="button"
-            onClick={() => setPose(p)}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+            onClick={() => setInside(false)}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
-            {p}
+            Exit temple
           </button>
-        ))}
-      </div>
-    </>
+          <Link
+            href="/"
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
+          >
+            Arrival Valley
+          </Link>
+        </div>
+      ) : null}
+    </SceneScope>
   );
 }
