@@ -94,6 +94,7 @@ const personJsonLd = {
   email: `mailto:${SITE.email}`,
   telephone: SITE.phone,
   url: SITE_URL,
+  sameAs: [SITE.github],
   description: SITE.description,
   knowsAbout: [
     "Web development",

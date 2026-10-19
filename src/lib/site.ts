@@ -10,6 +10,8 @@ export const SITE = {
   whatsappUrl:
     "https://wa.me/8801576483920?text=Hi%20Saiful%2C%20I%27d%20like%20to%20discuss%20a%20project.",
   whatsappMessage: "Hi Saiful, I'd like to discuss a project.",
+  github: "https://github.com/Saif-nyt",
+  githubHandle: "Saif-nyt",
   experience: "1.5 years",
   projectsCompleted: "100+",
   languages: "English",

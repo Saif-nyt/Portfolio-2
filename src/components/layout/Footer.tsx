@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, MessageCircle, Phone } from "lucide-react";
+import { GithubIcon } from "@/components/ui/GithubIcon";
 import { NAV_LINKS, SITE, SITE_URL } from "@/lib/site";
 
 async function getCopyrightYear(): Promise<number> {
@@ -70,6 +71,17 @@ export async function Footer() {
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
                 Chat on WhatsApp
+              </a>
+            </li>
+            <li>
+              <a
+                href={SITE.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded py-1 text-dim transition hover:text-accent"
+              >
+                <GithubIcon className="h-4 w-4" />
+                {SITE.githubHandle} on GitHub
               </a>
             </li>
           </ul>

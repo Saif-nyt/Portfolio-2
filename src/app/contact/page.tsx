@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
+import { GithubIcon } from "@/components/ui/GithubIcon";
 import { Reveal } from "@/components/animations/Reveal";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { DownloadCv } from "@/components/contact/DownloadCv";
@@ -45,6 +46,15 @@ const channels = [
     note: "Opens WhatsApp in a new tab with a message ready to send.",
     external: true,
   },
+  {
+    id: "github",
+    label: "GitHub",
+    value: SITE.githubHandle,
+    href: SITE.github,
+    icon: GithubIcon,
+    note: "Code, experiments and open-source work — opens in a new tab.",
+    external: true,
+  },
 ];
 
 /** Compact channels + form shown inside the in-world contact codex. */
@@ -69,7 +79,7 @@ function ContactCodexBody() {
                   target={channel.external ? "_blank" : undefined}
                   rel={channel.external ? "noopener noreferrer" : undefined}
                   aria-label={
-                    channel.external ? "Chat on WhatsApp (opens in a new tab)" : undefined
+                    channel.external ? `${channel.label} (opens in a new tab)` : undefined
                   }
                   className="panel card-hover flex items-start gap-4 rounded-2xl px-4 py-4"
                 >
@@ -151,7 +161,7 @@ export default function ContactPage() {
                             rel={channel.external ? "noopener noreferrer" : undefined}
                             aria-label={
                               channel.external
-                                ? "Chat on WhatsApp (opens in a new tab)"
+                                ? `${channel.label} (opens in a new tab)`
                                 : undefined
                             }
                             className="panel card-hover flex items-start gap-4 rounded-2xl px-4 py-4 sm:px-5"
@@ -223,6 +233,10 @@ export default function ContactPage() {
                 <ActionLink href={SITE.whatsappUrl} variant="ghost">
                   <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   Chat on WhatsApp
+                </ActionLink>
+                <ActionLink href={SITE.github} variant="ghost">
+                  <GithubIcon className="h-4 w-4" />
+                  View GitHub
                 </ActionLink>
               </div>
             </div>

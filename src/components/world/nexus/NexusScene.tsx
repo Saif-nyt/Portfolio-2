@@ -164,7 +164,7 @@ export function NexusScene() {
           Have a project in mind?
         </h1>
         <p className="mt-2 max-w-md text-sm text-dim">
-          Let&apos;s build something useful. Three channels — all reach me directly.
+          Let&apos;s build something useful. Every channel reaches me directly.
         </p>
       </div>
 
