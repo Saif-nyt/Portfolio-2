@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 
@@ -325,16 +327,22 @@ export function ObservatoryScene() {
       >
         <LightRig keyColor="#c5d8f0" fillColor={ACCENT} intensity={0.75} />
         <CameraDirector pose={pose as string} poses={POSES} />
+        <AmbientMotes color={ACCENT} radius={7} height={5.5} count={110} size={0.16} />
 
-        {/* Observatory floor ring */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-          <ringGeometry args={[3.5, 5.5, 48]} />
-          <meshStandardMaterial color="#0a1520" emissive={ACCENT} emissiveIntensity={0.15} side={THREE.DoubleSide} />
-        </mesh>
+        {/* Observatory floor: disc first, inlaid ring lifted a hair to avoid z-fighting */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[5.5, 48]} />
           <meshStandardMaterial color="#060e14" roughness={0.95} />
         </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
+          <ringGeometry args={[3.5, 5.5, 48]} />
+          <meshStandardMaterial color="#0a1520" emissive={ACCENT} emissiveIntensity={0.15} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Slowly counter-rotating instrument rings and a central light column */}
+        <OrbitRing position={[0, 0.14, 0]} radius={4.5} color={ACCENT} speed={0.16} opacity={0.32} />
+        <OrbitRing position={[0, 0.2, 0]} radius={3.6} color={ACCENT} speed={-0.22} opacity={0.22} tilt={0.02} />
+        <RiseBeam position={[0, 0, 0]} color={ACCENT} radius={1.4} height={6} opacity={0.05} speed={0.7} />
 
         <ConnectionLines />
 

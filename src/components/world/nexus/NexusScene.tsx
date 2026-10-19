@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 import { SITE } from "@/lib/site";
@@ -29,16 +31,21 @@ function CommPillar({
         <cylinderGeometry args={[0.35, 0.5, 1.8, 8]} />
         <meshStandardMaterial color="#14101a" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 2, 0]}>
-        <sphereGeometry args={[0.32, 16, 16]} />
-        <meshStandardMaterial
-          color="#1a1220"
-          emissive={accent}
-          emissiveIntensity={1.8}
-          roughness={0.3}
-          toneMapped={false}
-        />
-      </mesh>
+      <Floater amplitude={0.06} speed={0.9} spin={0.5}>
+        <mesh position={[0, 2, 0]}>
+          <sphereGeometry args={[0.32, 16, 16]} />
+          <meshStandardMaterial
+            color="#1a1220"
+            emissive={accent}
+            emissiveIntensity={1.8}
+            roughness={0.3}
+            toneMapped={false}
+          />
+        </mesh>
+      </Floater>
+      {/* Signal beam and orbiting transmission ring */}
+      <RiseBeam position={[0, 1.1, 0]} color={accent} radius={0.42} height={2.4} opacity={0.09} speed={1.3} />
+      <OrbitRing position={[0, 2, 0]} radius={0.52} color={accent} speed={0.7} tilt={Math.PI / 2.6} opacity={0.6} />
       <pointLight position={[0, 2.2, 0]} color={accent} intensity={4} distance={5} decay={2} />
       {/* Base ring */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -74,6 +81,7 @@ export function NexusScene() {
       >
         <LightRig keyColor="#e8d0f0" fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={pose as string} poses={POSES} />
+        <AmbientMotes color={ACCENT} radius={6.5} height={4.5} count={80} />
 
         {/* Platform */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -85,6 +93,7 @@ export function NexusScene() {
           <ringGeometry args={[5.5, 6.5, 48]} />
           <meshStandardMaterial color="#160e1c" emissive={ACCENT} emissiveIntensity={0.3} side={2} />
         </mesh>
+        <OrbitRing position={[0, 0.06, 0]} radius={5} color={ACCENT} speed={0.14} opacity={0.26} />
 
         {/* Project Terminal */}
         <CommPillar position={[-3, 0, -1]} accent="#8fd8ff" />

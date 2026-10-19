@@ -42,9 +42,9 @@ export function WorldNavSurface({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { activeObject, mapOpen, codex } = useWorldState();
-  // An open panel/map/codex takes over the screen; block world movement behind it.
-  const blocked = Boolean(activeObject) || mapOpen || codex !== null;
+  const { activeObject, mapOpen, codex, collectionOpen } = useWorldState();
+  // An open panel/map/codex/collection takes over the screen; block world movement behind it.
+  const blocked = Boolean(activeObject) || mapOpen || codex !== null || collectionOpen;
   const blockedRef = useRef(blocked);
 
   useEffect(() => {

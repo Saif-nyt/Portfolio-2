@@ -3,21 +3,16 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useProjectsResource, type ProjectSummary } from "@/lib/world/content-hooks";
+import { artifactFrom } from "@/lib/world/artifacts";
+import { progressActions, useProgress } from "@/lib/world/progress";
 import { worldActions } from "@/lib/world/store";
 import { useMediaQuery } from "@/lib/hooks";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
 
 const ACCENT = "#6bffd0";
-
-const PROJECT_ACCENTS = ["#6bffd0", "#8fd8ff", "#b39dff", "#ffd36b", "#ffb36b", "#ff8fb3"];
-/** Named accents from the project schema → vault crystal colours. */
-const ACCENT_BY_NAME: Record<string, string> = {
-  cyan: "#6bffd0",
-  turquoise: "#8fd8ff",
-  mist: "#b39dff",
-};
 
 type PoseId = "overview" | "close" | "left" | "right";
 
@@ -26,10 +21,12 @@ function Artifact({
   position,
   accent,
   index,
+  collected = false,
 }: {
   position: [number, number, number];
   accent: string;
   index: number;
+  collected?: boolean;
 }) {
   return (
     <group position={position}>
@@ -37,18 +34,31 @@ function Artifact({
         <cylinderGeometry args={[0.55, 0.7, 0.3, 8]} />
         <meshStandardMaterial color="#0f1f1b" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 0.85, 0]} rotation={[0, index * 0.7, 0.2]}>
-        <octahedronGeometry args={[0.38, 0]} />
-        <meshStandardMaterial
-          color="#0d2420"
-          emissive={accent}
-          emissiveIntensity={1.6}
-          roughness={0.25}
-          metalness={0.2}
-          toneMapped={false}
-        />
-      </mesh>
-      <pointLight position={[0, 1, 0]} color={accent} intensity={3} distance={4} decay={2} />
+      {/* Containment beam rising from the pedestal */}
+      <RiseBeam position={[0, 0.3, 0]} color={accent} radius={0.5} height={2.1} opacity={0.09} speed={1 + index * 0.12} />
+      {/* Orbiting scan ring around the crystal — brighter once collected */}
+      <OrbitRing
+        position={[0, 0.85, 0]}
+        radius={0.64}
+        color={accent}
+        speed={0.5 + index * 0.06}
+        tilt={Math.PI / 2.4}
+        opacity={collected ? 0.85 : 0.5}
+      />
+      <Floater amplitude={0.09} speed={0.7} phase={index * 1.3} spin={0.45 + index * 0.08}>
+        <mesh position={[0, 0.85, 0]} rotation={[0, index * 0.7, 0.2]}>
+          <octahedronGeometry args={[0.38, 0]} />
+          <meshStandardMaterial
+            color="#0d2420"
+            emissive={accent}
+            emissiveIntensity={collected ? 2.2 : 1.6}
+            roughness={0.25}
+            metalness={0.2}
+            toneMapped={false}
+          />
+        </mesh>
+      </Floater>
+      <pointLight position={[0, 1, 0]} color={accent} intensity={collected ? 4 : 3} distance={4} decay={2} />
     </group>
   );
 }
@@ -96,6 +106,7 @@ function artifactDetails(project: ProjectSummary, i: number) {
 export function VaultScene() {
   const router = useRouter();
   const { status, data: projects, reload } = useProjectsResource();
+  const progress = useProgress();
   const [pose, setPose] = useState<PoseId>("overview");
   // Portrait phones can't fit the wide desktop arc — tighten it and pull the
   // camera back so every artifact stays on screen.
@@ -166,13 +177,13 @@ export function VaultScene() {
         </mesh>
 
         {visible.map((project, i) => {
-          const accent =
-            (project.accent && ACCENT_BY_NAME[project.accent]) ||
-            PROJECT_ACCENTS[i % PROJECT_ACCENTS.length];
+          const artifact = artifactFrom(project, i);
+          const accent = artifact.accent;
+          const collected = progress.collected.includes(artifact.id);
           const pos = positions[i];
           return (
             <group key={project.slug}>
-              <Artifact position={pos} accent={accent} index={i} />
+              <Artifact position={pos} accent={accent} index={i} collected={collected} />
               <Hotspot3D
                 position={[pos[0], 1.3, pos[2]]}
                 radius={0.8}
@@ -180,6 +191,15 @@ export function VaultScene() {
                 object={{
                   ...artifactDetails(project, i),
                   actions: [
+                    ...(collected
+                      ? []
+                      : [
+                          {
+                            label: `Collect · ${artifact.rarity}`,
+                            onClick: () =>
+                              progressActions.collect(artifact.id, artifact.rarity),
+                          },
+                        ]),
                     {
                       label: "Open case file",
                       onClick: () => router.push(`/work/${project.slug}`),

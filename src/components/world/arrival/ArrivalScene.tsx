@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
-import { worldActions } from "@/lib/world/store";
+import { worldActions, useWorldState } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { Campsite } from "./Campsite";
+import { Forest } from "./Forest";
 
 const ACCENT = "#63f5e7";
 
@@ -13,6 +15,7 @@ const POSES: Record<string, CameraPose> = {
   intro: { position: [0, 4.8, 15], lookAt: [0, 1.6, 0] },
   overview: { position: [0, 3.2, 10], lookAt: [0, 1.2, 0] },
   map: { position: [0, 2.2, 6.5], lookAt: [0, 1, 0] },
+  camp: { position: [-1.5, 2.4, 8.0], lookAt: [-4.6, 0.7, 2.4] },
   temple: { position: [-2.5, 2, 5], lookAt: [-5, 1.5, 2] },
   vault: { position: [2.8, 2, 5], lookAt: [5.5, 1.2, 1] },
   beacon: { position: [0, 2.4, 4], lookAt: [0, 1.8, 0] },
@@ -113,11 +116,14 @@ function GlowCrystals({
 
 /**
  * Arrival Valley — Home. A lightweight alien landscape with a glowing path,
- * distant floating islands, a temple on the horizon, interactive crystals,
- * and a central map pedestal that opens the star chart.
+ * distant floating islands, a temple on the horizon, interactive crystals, a
+ * central map pedestal that opens the star chart, and a living campsite — a
+ * hand-built cabin and animated campfire ringed by wind-swept vegetation,
+ * drifting spores, fireflies and low ground mist.
  */
 export function ArrivalScene() {
   const reduced = usePrefersReducedMotion();
+  const { quality } = useWorldState();
   const [pose, setPose] = useState<keyof typeof POSES>(reduced ? "overview" : "intro");
 
   // Opening dolly: start wide, ease into the hero framing just after mount.
@@ -142,6 +148,8 @@ export function ArrivalScene() {
         <ValleyPath />
         <DistantTemple />
         <MapPedestal />
+        <Campsite quality={quality} reduced={reduced} />
+        <Forest quality={quality} reduced={reduced} />
 
         <FloatingIsland position={[-8, 6, -10]} scale={1.4} />
         <FloatingIsland position={[7, 7.5, -12]} scale={1.8} />
@@ -162,6 +170,23 @@ export function ArrivalScene() {
             title: "The World of Nebula",
             body: "Seven locations across one bioluminescent world. Choose where to explore next — every site section is a physical place you can enter.",
             actions: [{ label: "Open star chart", onClick: () => worldActions.toggleMap(true) }],
+          }}
+        />
+
+        {/* Campsite beacon → basecamp */}
+        <Hotspot3D
+          position={[-4.1, 1.7, 2.5]}
+          radius={0.85}
+          accent="#ffb066"
+          object={{
+            id: "campsite",
+            eyebrow: "CAMPSITE · BASECAMP",
+            title: "The Workbench by the Fire",
+            body: "Every frontier needs a home base. This is where ideas get sketched, systems get built, and long builds are seen through — one careful commit at a time.",
+            actions: [
+              { label: "Explore the world", onClick: () => worldActions.toggleMap(true) },
+              { label: "About Saiful", href: "/about" },
+            ],
           }}
         />
 

@@ -5,6 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { EmberField, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 
@@ -182,6 +184,7 @@ export function ForgeScene() {
       >
         <LightRig keyColor="#ffe0b8" fillColor={ACCENT} intensity={0.8} />
         <CameraDirector pose={pose as string} poses={POSES} />
+        <AmbientMotes color="#ffcf9a" radius={6} height={4.5} count={90} size={0.15} />
 
         {/* Forge floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -193,6 +196,10 @@ export function ForgeScene() {
           <ringGeometry args={[0.8, 1.6, 32]} />
           <meshStandardMaterial color="#1a1208" emissive={ACCENT} emissiveIntensity={0.5} side={THREE.DoubleSide} />
         </mesh>
+        {/* Living forge: rotating pit ring, rising heat column, and embers */}
+        <OrbitRing position={[0, 0.06, 0]} radius={1.2} color={ACCENT} speed={0.35} opacity={0.45} />
+        <RiseBeam position={[0, 0, 0]} color={ACCENT} radius={0.85} height={3.2} opacity={0.045} speed={0.9} />
+        <EmberField count={46} color="#ffb46a" radius={0.95} height={3.4} size={3.6} speed={0.42} />
 
         {STATIONS.map((station) => (
           <group key={station.id}>

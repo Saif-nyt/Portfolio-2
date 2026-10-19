@@ -28,6 +28,8 @@ interface WorldState {
   mapOpen: boolean;
   /** Currently open codex overlay (deep content: story, skills, projects…), if any. */
   codex: CodexSection | null;
+  /** Whether the explorer's collection/progression overlay is open. */
+  collectionOpen: boolean;
   /** Reduced-effort rendering tier for weaker devices. */
   quality: RenderQuality;
 }
@@ -36,6 +38,7 @@ let state: WorldState = {
   activeObject: null,
   mapOpen: false,
   codex: null,
+  collectionOpen: false,
   quality: "high",
 };
 
@@ -58,7 +61,13 @@ function getSnapshot(): WorldState {
 
 // Cached so useSyncExternalStore sees a stable reference (a fresh object each
 // call triggers React's "getServerSnapshot should be cached" infinite-loop guard).
-const SERVER_STATE: WorldState = { activeObject: null, mapOpen: false, codex: null, quality: "high" };
+const SERVER_STATE: WorldState = {
+  activeObject: null,
+  mapOpen: false,
+  codex: null,
+  collectionOpen: false,
+  quality: "high",
+};
 
 function getServerSnapshot(): WorldState {
   return SERVER_STATE;
@@ -67,7 +76,7 @@ function getServerSnapshot(): WorldState {
 /** Imperative actions — callable from3D callbacks without React state plumbing. */
 export const worldActions = {
   openPanel(object: ActiveObject) {
-    state = { ...state, activeObject: object, mapOpen: false, codex: null };
+    state = { ...state, activeObject: object, mapOpen: false, codex: null, collectionOpen: false };
     emit();
   },
   closePanel() {
@@ -79,17 +88,36 @@ export const worldActions = {
     const next = open ?? !state.mapOpen;
     if (next === state.mapOpen) return;
     // Map replaces whatever else is open so only one overlay shows at a time.
-    state = { ...state, mapOpen: next, activeObject: next ? null : state.activeObject, codex: next ? null : state.codex };
+    state = {
+      ...state,
+      mapOpen: next,
+      activeObject: next ? null : state.activeObject,
+      codex: next ? null : state.codex,
+      collectionOpen: next ? false : state.collectionOpen,
+    };
     emit();
   },
   openCodex(section: CodexSection) {
     if (section === state.codex) return;
-    state = { ...state, codex: section, activeObject: null, mapOpen: false };
+    state = { ...state, codex: section, activeObject: null, mapOpen: false, collectionOpen: false };
     emit();
   },
   closeCodex() {
     if (!state.codex) return;
     state = { ...state, codex: null };
+    emit();
+  },
+  toggleCollection(open?: boolean) {
+    const next = open ?? !state.collectionOpen;
+    if (next === state.collectionOpen) return;
+    // Collection replaces other overlays so only one is ever on screen.
+    state = {
+      ...state,
+      collectionOpen: next,
+      activeObject: next ? null : state.activeObject,
+      mapOpen: next ? false : state.mapOpen,
+      codex: next ? null : state.codex,
+    };
     emit();
   },
   setQuality(quality: RenderQuality) {

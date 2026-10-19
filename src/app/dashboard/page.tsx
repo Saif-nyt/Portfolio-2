@@ -11,6 +11,10 @@ import {
 } from "@/server/content-cache";
 import { getCachedProjects } from "@/server/projects-cache";
 
+// Internal demo route: it aggregates the whole content store before rendering,
+// so it is deliberately allowed to block instead of streaming a static shell.
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Dashboard",
   description:

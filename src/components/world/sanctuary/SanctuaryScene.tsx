@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { Floater, OrbitRing } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useArticlesResource } from "@/lib/world/content-hooks";
 import { worldActions } from "@/lib/world/store";
@@ -28,21 +30,23 @@ function DataTablet({
 }) {
   return (
     <group position={position} rotation={[0, (index - 2) * -0.15, 0]}>
-      {/* Tablet slab */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[0.9, 1.2, 0.06]} />
-        <meshStandardMaterial color="#141a14" roughness={0.7} metalness={0.1} />
-      </mesh>
-      {/* Glowing screen face */}
-      <mesh position={[0, 0, 0.04]}>
-        <planeGeometry args={[0.78, 1.05]} />
-        <meshStandardMaterial
-          color="#0d1f18"
-          emissive={accent}
-          emissiveIntensity={0.9}
-          toneMapped={false}
-        />
-      </mesh>
+      <Floater amplitude={0.1} speed={0.6} phase={index * 1.6} spin={0.12}>
+        {/* Tablet slab */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.9, 1.2, 0.06]} />
+          <meshStandardMaterial color="#141a14" roughness={0.7} metalness={0.1} />
+        </mesh>
+        {/* Glowing screen face */}
+        <mesh position={[0, 0, 0.04]}>
+          <planeGeometry args={[0.78, 1.05]} />
+          <meshStandardMaterial
+            color="#0d1f18"
+            emissive={accent}
+            emissiveIntensity={0.9}
+            toneMapped={false}
+          />
+        </mesh>
+      </Floater>
       <pointLight position={[0, 0.2, 0.4]} color={accent} intensity={2.2} distance={3.5} decay={2} />
     </group>
   );
@@ -78,6 +82,7 @@ export function SanctuaryScene() {
       >
         <LightRig keyColor="#f0e0c0" fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={pose as string} poses={POSES} />
+        <AmbientMotes color="#ffe6a6" radius={5.5} height={4} count={70} size={0.13} />
 
         {/* Sanctuary floor with concentric rings */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -92,6 +97,7 @@ export function SanctuaryScene() {
           <ringGeometry args={[2.2, 2.5, 40]} />
           <meshStandardMaterial color="#1a160c" emissive={ACCENT} emissiveIntensity={0.2} side={2} />
         </mesh>
+        <OrbitRing position={[0, 0.05, 0]} radius={1.9} color={ACCENT} speed={0.2} opacity={0.3} />
 
         {visible.map((article, i) => {
           const accent = ARTICLE_ACCENTS[i % ARTICLE_ACCENTS.length];

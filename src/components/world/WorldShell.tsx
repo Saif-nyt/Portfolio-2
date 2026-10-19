@@ -12,12 +12,14 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Compass, Info, Map as MapIcon, X, Zap } from "lucide-react";
+import { Compass, Info, Map as MapIcon, Package, X, Zap } from "lucide-react";
 import { HoloPanel } from "@/components/world/HoloPanel";
 import { WorldCodex } from "@/components/world/WorldCodex";
+import { WorldCollection } from "@/components/world/WorldCollection";
 import { WorldMapOverlay } from "@/components/world/WorldMapOverlay";
 import { WorldNavSurface } from "@/components/world/WorldNavSurface";
 import { LOCATION_BY_ID, type LocationId } from "@/lib/world/registry";
+import { levelFromXp, progressActions, useProgress } from "@/lib/world/progress";
 import { detectQuality, useWorldState, worldActions } from "@/lib/world/store";
 import { MODE_CHANGE_EVENT, readStoredMode, setStoredMode } from "@/lib/mode";
 import { readJson, writeJson } from "@/lib/storage";
@@ -124,7 +126,9 @@ export function WorldShell({
 }: WorldShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { activeObject, mapOpen, codex } = useWorldState();
+  const { activeObject, mapOpen, codex, collectionOpen } = useWorldState();
+  const progress = useProgress();
+  const level = levelFromXp(progress.xp);
 
   // Client-only capabilities via useSyncExternalStore (SSR-safe snapshots).
   // Server snapshot for webglOk is `false`: the server can't know about WebGL,
@@ -138,6 +142,11 @@ export function WorldShell({
     worldActions.setQuality(detectQuality());
   }, []);
 
+  // Record the visit for progression (first-time visits award XP + feed quests).
+  useEffect(() => {
+    progressActions.visitLocation(locationId);
+  }, [locationId]);
+
   // Travel (map, strip, link) swaps the shell entirely — close stale overlays
   // so a codex/panel opened in one location never bleeds into the next.
   // Skips the initial mount so a codex deliberately opened *before* travel
@@ -149,6 +158,7 @@ export function WorldShell({
     worldActions.closePanel();
     worldActions.toggleMap(false);
     worldActions.closeCodex();
+    worldActions.toggleCollection(false);
   }, [pathname]);
 
   // Hide the conventional footer while the world occupies the viewport so
@@ -203,6 +213,19 @@ export function WorldShell({
           </p>
         </div>
         <div className="pointer-events-auto flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => worldActions.toggleCollection()}
+            aria-pressed={collectionOpen}
+            aria-label={`Open collection — level ${level} explorer`}
+            title="Collection"
+            className="panel flex min-h-11 items-center gap-2 rounded-full px-3.5 py-2 font-mono text-[0.58rem] tracking-[0.2em] text-dim uppercase transition hover:border-linestrong hover:text-accent"
+          >
+            <Package className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden="true" />
+            <span className="tabular-nums" style={{ color: accent }}>
+              LV {level}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => worldActions.toggleMap()}
@@ -302,6 +325,7 @@ export function WorldShell({
         {codexContent}
       </WorldCodex>
       <WorldMapOverlay open={mapOpen} currentId={locationId} onNavigate={goTo} accent={accent} />
+      <WorldCollection open={collectionOpen} accent={accent} />
     </div>
   );
 }

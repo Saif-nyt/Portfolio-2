@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { RiseBeam } from "@/components/world/cinematics";
 import {
   CameraDirector,
   Hotspot3D,
@@ -71,6 +73,7 @@ export function TempleScene() {
       >
         <LightRig keyColor="#cfe9f2" fillColor="#8fd8ff" intensity={1.35} />
         <CameraDirector pose={pose} poses={POSES} reduced={reduced} />
+        <AmbientMotes color="#cfe9f2" radius={5.5} height={4} count={70} size={0.12} />
 
         {/* Interior fill — lifts the chamber just enough to read the stone,
             the alcoves and the dais without losing the dark, ancient mood. */}
@@ -95,6 +98,8 @@ export function TempleScene() {
         <TempleDoor open={doorsOpen} accent={ACCENT} />
 
         {/* ---------- Interactive objects (interior) ---------- */}
+        {/* Consecration light rising from the identity dais */}
+        <RiseBeam position={[0, 0.9, -4.2]} color={ACCENT} radius={0.6} height={2.6} opacity={0.09} speed={0.85} />
         {/* Identity Crystal — central dais */}
         <Hotspot3D
           position={[0, 1.5, -4.2]}

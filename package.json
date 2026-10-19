@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:game": "node --no-warnings scripts/game-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

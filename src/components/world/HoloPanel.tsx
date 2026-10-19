@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { ActiveObject } from "@/lib/world/store";
 import { worldActions } from "@/lib/world/store";
+import { progressActions } from "@/lib/world/progress";
 
 interface HoloPanelProps {
   object: ActiveObject | null;
@@ -20,6 +21,13 @@ interface HoloPanelProps {
 export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Opening any object counts as a discovery — the explorer has now inspected
+  // it. Awards XP once per id and feeds survey/collection achievements.
+  useEffect(() => {
+    if (!object?.id) return;
+    progressActions.discover(object.id);
+  }, [object?.id]);
 
   useEffect(() => {
     if (!object) return;
