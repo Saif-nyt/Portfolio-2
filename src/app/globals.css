@@ -912,13 +912,21 @@
   will-change: transform, opacity;
 }
 
+/* Bioluminescent glow. Kept static by default: continuously animating
+   transform/opacity on dozens of nested SVG nodes forces the whole SVG to
+   re-raster every frame, which tanks frame-rate on the multi-Scene pages.
+   Use `.anim-pulse-live` to opt a *few* elements back into the pulse. */
 .anim-pulse {
+  filter: drop-shadow(0 0 12px rgba(99, 245, 231, 0.55));
+}
+
+.anim-pulse-live {
   transform-origin: center;
   filter: drop-shadow(0 0 12px rgba(99, 245, 231, 0.55));
   animation: pandora-pulse var(--pulse-dur, 5s) cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
-svg .anim-pulse {
+svg .anim-pulse-live {
   transform-box: fill-box;
 }
 
@@ -1159,6 +1167,7 @@ svg .anim-pulse {
   .anim-drift,
   .anim-float,
   .anim-pulse,
+  .anim-pulse-live,
   .anim-beam,
   .anim-nudge,
   .anim-ants,

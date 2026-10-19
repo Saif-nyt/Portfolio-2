@@ -32,7 +32,7 @@ export function ServiceCard({ service, detailed = false, index = 0 }: ServiceCar
       <article
         className={`panel card-hover sheen group flex h-full flex-col gap-5 rounded-3xl p-6 sm:p-7 ${accent.ring}`}
       >
-        <Fireflies count={4} />
+        <Fireflies count={3} />
         <div className="flex items-start justify-between gap-4">
           <span className={`font-mono text-xs tracking-[0.2em] ${accent.text}`}>
             {service.number}

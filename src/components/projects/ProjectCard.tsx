@@ -17,7 +17,7 @@ export function ProjectCard({ project, featured = false, index = 0 }: ProjectCar
   return (
     <Reveal delay={index * 0.08} className={featured ? "md:col-span-2" : undefined}>
       <article className="panel card-hover sheen group flex h-full flex-col overflow-hidden rounded-3xl">
-        <Fireflies count={5} />
+        <Fireflies count={3} />
         <div
           className={`relative overflow-hidden border-b border-line ${
             featured ? "aspect-[16/9] sm:aspect-[21/9]" : "aspect-[16/10]"

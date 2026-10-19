@@ -79,7 +79,7 @@ export function ArticleCard({
   return (
     <Reveal delay={index * 0.07} className="h-full">
       <article className="panel card-hover sheen group flex h-full flex-col gap-4 overflow-hidden rounded-3xl p-6 sm:p-7">
-        <Fireflies count={4} />
+        <Fireflies count={3} />
         {article.cover ? (
           <div className="relative -mx-6 -mt-6 aspect-[16/9] overflow-hidden border-b border-line sm:-mx-7 sm:-mt-7">
             <Image

@@ -38,7 +38,7 @@ function StorefrontArt({ accent, rid }: ArtProps) {
               r="15"
               fill={accent}
               fillOpacity="0.35"
-              className={i === 0 ? "anim-pulse" : undefined}
+              className={i === 0 ? "anim-pulse-live" : undefined}
               style={{ animationDelay: `${i * 0.8}s` }}
             />
             <rect x={x + 12} y={y + 78} width={i % 2 === 0 ? 124 : 96} height="9" rx="4.5" fill={MIST} fillOpacity="0.55" />
@@ -134,13 +134,13 @@ function TrackingArt({ accent }: Pick<ArtProps, "accent">) {
           />
         </g>
       ))}
-      <circle cx="222" cy="136" r="4" fill={accent} className="anim-pulse" />
+      <circle cx="222" cy="136" r="4" fill={accent} className="anim-pulse-live" />
       <circle
         cx="432"
         cy="238"
         r="4"
         fill={accent}
-        className="anim-pulse"
+        className="anim-pulse-live"
         style={{ animationDelay: "0.9s" }}
       />
       <circle
@@ -148,7 +148,7 @@ function TrackingArt({ accent }: Pick<ArtProps, "accent">) {
         cy="238"
         r="4"
         fill={accent}
-        className="anim-pulse"
+        className="anim-pulse-live"
         style={{ animationDelay: "1.8s" }}
       />
     </g>
@@ -248,13 +248,13 @@ function ImmersiveArt({ accent, rid }: ArtProps) {
       <rect x="60" y="104" width="300" height="22" rx="11" fill={MIST} fillOpacity="0.9" />
       <rect x="60" y="138" width="216" height="22" rx="11" fill={MIST} fillOpacity="0.55" />
       <rect x="60" y="180" width="150" height="11" rx="5.5" fill={accent} fillOpacity="0.85" />
-      <circle cx="520" cy="96" r="5" fill={accent} className="anim-pulse" />
+      <circle cx="520" cy="96" r="5" fill={accent} className="anim-pulse-live" />
       <circle
         cx="470"
         cy="238"
         r="4"
         fill={accent}
-        className="anim-pulse"
+        className="anim-pulse-live"
         style={{ animationDelay: "1.4s" }}
       />
     </g>
@@ -284,7 +284,7 @@ function GenericArt({ accent, rid }: ArtProps) {
       ))}
       <rect x="24" y="318" width="752" height="88" rx="14" fill={PANEL} stroke={RIDGE} />
       <rect x="48" y="352" width="220" height="10" rx="5" fill={MIST} fillOpacity="0.5" />
-      <circle cx="656" cy="362" r="16" fill={accent} fillOpacity="0.5" className="anim-pulse" />
+      <circle cx="656" cy="362" r="16" fill={accent} fillOpacity="0.5" className="anim-pulse-live" />
     </g>
   );
 }
