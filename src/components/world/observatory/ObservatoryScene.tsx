@@ -9,12 +9,19 @@ import { SceneScope } from "@/components/world/SceneScope";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#b39dff";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-4.4, 3.2],
+  [4.4, 3.2],
+  [-4.4, -3.2],
+  [4.4, -3.2],
+];
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 2.6, 16.5], lookAt: [0, 2.6, 11.5] },
@@ -358,6 +365,7 @@ export function ObservatoryScene() {
         <LightRig fillColor={ACCENT} intensity={0.75} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
         <AmbientMotes color={palette.mote} radius={7} height={5.5} count={110} size={0.16} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the observatory */}
         <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={inside} />

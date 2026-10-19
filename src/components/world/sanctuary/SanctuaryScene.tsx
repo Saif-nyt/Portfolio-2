@@ -8,6 +8,7 @@ import { SceneScope } from "@/components/world/SceneScope";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { Floater, OrbitRing } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useArticlesResource } from "@/lib/world/content-hooks";
@@ -15,6 +16,12 @@ import { worldActions } from "@/lib/world/store";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#ffd36b";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-6, -3.8],
+  [-3, 6.2],
+  [3, 6.2],
+  [6, -3.8],
+];
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 2.8, 16], lookAt: [0, 2.8, 11] },
@@ -98,6 +105,7 @@ export function SanctuaryScene() {
         <LightRig fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.13} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the library */}
         <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={inside} />

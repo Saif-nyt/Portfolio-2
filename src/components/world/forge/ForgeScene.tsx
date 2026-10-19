@@ -10,12 +10,19 @@ import { SceneScope } from "@/components/world/SceneScope";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { EmberField, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#ffb36b";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-7, -4],
+  [-4, 6],
+  [4, 6],
+  [7, -4],
+];
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 3, 17], lookAt: [0, 2.8, 12] },
@@ -201,6 +208,7 @@ export function ForgeScene() {
         <LightRig fillColor={ACCENT} intensity={0.8} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
         <AmbientMotes color={palette.mote} radius={6} height={4.5} count={90} size={0.15} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the forge */}
         <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={inside} />

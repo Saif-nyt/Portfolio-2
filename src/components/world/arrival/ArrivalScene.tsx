@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
@@ -22,11 +23,10 @@ const PATH_ROUTES: [number, number, number][][] = [
 ];
 
 function makePathRibbon(
-  controlPoints: [number, number, number][],
+  curve: THREE.CatmullRomCurve3,
   width: number,
   sideOffset = 0,
 ): THREE.BufferGeometry {
-  const curve = new THREE.CatmullRomCurve3(controlPoints.map((point) => new THREE.Vector3(...point)));
   const samples = curve.getPoints(64);
   const positions = new Float32Array(samples.length * 2 * 3);
   const indices: number[] = [];
@@ -61,6 +61,59 @@ function makePathRibbon(
   return geometry;
 }
 
+function PathPulses({ paths }: { paths: Array<{ curve: THREE.CatmullRomCurve3 }> }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const palette = useSceneTheme();
+  const markers = useMemo(
+    () =>
+      paths.flatMap(({ curve }, routeIndex) => {
+        const count = routeIndex === 0 ? 6 : 3;
+        return Array.from({ length: count }, (_, index) => ({
+          curve,
+          routeIndex,
+          phase: index / count,
+        }));
+      }),
+    [paths],
+  );
+  const geometry = useMemo(() => new THREE.SphereGeometry(0.065, 6, 5), []);
+  const material = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: palette.accent(ACCENT),
+        toneMapped: false,
+      }),
+    [palette],
+  );
+  const markerRef = useRef(new THREE.Object3D());
+  const reduced = usePrefersReducedMotion();
+
+  useFrame(({ clock }) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const marker = markerRef.current;
+    for (let i = 0; i < markers.length; i += 1) {
+      const { curve, routeIndex, phase } = markers[i];
+      const progress = reduced
+        ? phase
+        : 0.5 - 0.5 * Math.cos(clock.elapsedTime * 0.28 + phase * Math.PI * 2 + routeIndex * 0.7);
+      const point = curve.getPointAt(progress);
+      marker.position.set(point.x, point.y + 0.07, point.z);
+      const scale = reduced
+        ? 0.75
+        : 0.76 + Math.sin(clock.elapsedTime * 0.8 + phase * Math.PI * 2) * 0.04;
+      marker.scale.setScalar(scale);
+      marker.updateMatrix();
+      mesh.setMatrixAt(i, marker.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={ref} args={[geometry, material, markers.length]} frustumCulled={false} />
+  );
+}
+
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 6.2, 35], lookAt: [0, 4.3, 17] },
   overview: { position: [0, 3.2, 10], lookAt: [0, 1.2, 0] },
@@ -76,13 +129,17 @@ function ValleyPath() {
   const palette = useSceneTheme();
   const paths = useMemo(
     () =>
-      PATH_ROUTES.map((route) => ({
-        ground: makePathRibbon(route, PATH_WIDTH),
-        edges: [
-          makePathRibbon(route, 0.035, PATH_WIDTH / 2 - 0.06),
-          makePathRibbon(route, 0.035, -PATH_WIDTH / 2 + 0.06),
-        ],
-      })),
+      PATH_ROUTES.map((route) => {
+        const curve = new THREE.CatmullRomCurve3(route.map((point) => new THREE.Vector3(...point)));
+        return {
+          curve,
+          ground: makePathRibbon(curve, PATH_WIDTH),
+          edges: [
+            makePathRibbon(curve, 0.035, PATH_WIDTH / 2 - 0.06),
+            makePathRibbon(curve, 0.035, -PATH_WIDTH / 2 + 0.06),
+          ],
+        };
+      }),
     [],
   );
 
@@ -108,6 +165,7 @@ function ValleyPath() {
           ))}
         </group>
       ))}
+      <PathPulses paths={paths} />
     </group>
   );
 }

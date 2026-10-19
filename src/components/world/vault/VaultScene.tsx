@@ -7,6 +7,8 @@ import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
+import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useProjectsResource, type ProjectSummary } from "@/lib/world/content-hooks";
@@ -19,6 +21,12 @@ import { mixHex } from "@/lib/world/scene-theme";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
 
 const ACCENT = "#6bffd0";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-7, -4],
+  [-4, 5],
+  [4, 5],
+  [7, -4],
+];
 
 type PoseId = "overview" | "close" | "left" | "right";
 
@@ -114,7 +122,6 @@ function Artifact({
           </mesh>
         </group>
       </Floater>
-      <pointLight position={[0, 1.1, 0]} color={accent} intensity={collected ? 4 : 3} distance={4} decay={2} />
     </group>
   );
 }
@@ -207,6 +214,27 @@ export function VaultScene() {
   );
 
   const hasArtifacts = status === "ready" && count > 0;
+  const caseFileFor = (project: ProjectSummary, index: number, rarity: "shard" | "artifact" | "relic") => ({
+    ...artifactDetails(project, index),
+    actions: [
+      ...(progress.collected.includes(project.slug)
+        ? []
+        : [
+            {
+              label: `Collect · ${rarity}`,
+              onClick: () => progressActions.collect(project.slug, rarity),
+            },
+          ]),
+      {
+        label: "Open case file",
+        onClick: () => router.push(`/work/${project.slug}`),
+      },
+      {
+        label: "Browse all projects",
+        onClick: () => worldActions.openCodex("work"),
+      },
+    ],
+  });
 
   return (
     <SceneScope accent={ACCENT}>
@@ -215,10 +243,12 @@ export function VaultScene() {
         cameraFov={44}
         background={palette.bg}
         fog={{ color: palette.fog, density: palette.fogDensity }}
-        animate
+        animate={inside}
       >
         <LightRig fillColor={ACCENT} intensity={0.8} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSE_STATES} />
+        <AmbientMotes color={palette.mote} radius={6.5} height={3.8} count={48} size={0.1} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the vault */}
         <TempleEntrance position={[0, 0, 13]} accent={ACCENT} open={inside} />
@@ -251,28 +281,8 @@ export function VaultScene() {
                 position={[pos[0], 1.3, pos[2]]}
                 radius={0.8}
                 accent={accent}
-                object={{
-                  ...artifactDetails(project, i),
-                  actions: [
-                    ...(collected
-                      ? []
-                      : [
-                          {
-                            label: `Collect · ${artifact.rarity}`,
-                            onClick: () =>
-                              progressActions.collect(artifact.id, artifact.rarity),
-                          },
-                        ]),
-                    {
-                      label: "Open case file",
-                      onClick: () => router.push(`/work/${project.slug}`),
-                    },
-                    {
-                      label: "Browse all projects",
-                      onClick: () => worldActions.openCodex("work"),
-                    },
-                  ],
-                }}
+                object={caseFileFor(project, i, artifact.rarity)}
+                showIndicator={false}
               />
             </group>
           );
@@ -285,7 +295,7 @@ export function VaultScene() {
           ARTIFACT VAULT · PROJECTS
         </p>
         <h1 className="mt-2 max-w-xl font-display text-2xl leading-tight text-ink sm:text-3xl">
-          Case Studies From the Field
+          Selected Work, Preserved in the Vault
         </h1>
         {status === "loading" ? (
           <p className="mt-2 max-w-md text-sm text-dim" role="status">
@@ -311,9 +321,38 @@ export function VaultScene() {
           </p>
         ) : (
           <p className="mt-2 max-w-md text-sm text-dim">
-            {count} artifact{count === 1 ? "" : "s"} catalogued — tap one to inspect its case file.
+            {count} case {count === 1 ? "study" : "studies"} · choose a project to explore its build story.
           </p>
         )}
+        {hasArtifacts ? (
+          <nav
+            aria-label="Featured case studies"
+            className="pointer-events-auto mt-4 flex w-full max-w-4xl gap-2 overflow-x-auto px-1 pb-2 text-left sm:mt-5"
+          >
+            {visible.map((project, i) => {
+              const artifact = artifactFrom(project, i);
+              const collected = progress.collected.includes(artifact.id);
+              return (
+                <button
+                  key={project.slug}
+                  type="button"
+                  aria-label={`Inspect ${project.title} case file`}
+                  onClick={() => worldActions.openPanel(caseFileFor(project, i, artifact.rarity))}
+                  className="panel flex min-h-[5.25rem] w-48 shrink-0 flex-col items-start justify-center gap-1 rounded-xl px-3.5 py-2.5 text-left transition hover:-translate-y-0.5"
+                  style={{ borderColor: `${artifact.accent}66` }}
+                >
+                  <span className="font-mono text-[0.55rem] tracking-[0.16em] uppercase" style={{ color: artifact.accent }}>
+                    {artifact.reference} · {artifact.classLabel}
+                  </span>
+                  <span className="line-clamp-1 text-sm font-medium text-ink">{project.title}</span>
+                  <span className="font-mono text-[0.5rem] tracking-[0.14em] text-faint uppercase">
+                    {collected ? "Collected" : `${artifact.rarity} · inspect`}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        ) : null}
       </div>
 
       <EntrancePrompt label="the Vault" open={inside} onEnter={() => setInside(true)} />

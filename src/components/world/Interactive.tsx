@@ -25,6 +25,8 @@ interface Hotspot3DProps {
   disabled?: boolean;
   /** Extra idle animation speed multiplier. */
   pulse?: number;
+  /** Keep the hit target while hiding the default crystal and light. */
+  showIndicator?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function Hotspot3D({
   children,
   disabled = false,
   pulse = 1,
+  showIndicator = true,
 }: Hotspot3DProps) {
   const ringRef = useRef<THREE.Mesh>(null);
   const ring2Ref = useRef<THREE.Mesh>(null);
@@ -53,7 +56,7 @@ export function Hotspot3D({
   const phase = useMemo(() => position[0] * 1.7 + position[2] * 0.9, [position]);
 
   useFrame(({ clock }) => {
-    if (reduced) return;
+    if (reduced || !showIndicator) return;
     const t = clock.elapsedTime * pulse + phase;
     if (ringRef.current) {
       ringRef.current.rotation.z = t * 0.5;
@@ -82,12 +85,12 @@ export function Hotspot3D({
   const onOver = (event: ThreeEvent<PointerEvent>) => {
     if (disabled) return;
     event.stopPropagation();
-    setHovered(true);
+    if (showIndicator) setHovered(true);
     document.body.style.cursor = "pointer";
   };
 
   const onOut = () => {
-    setHovered(false);
+    if (showIndicator) setHovered(false);
     document.body.style.cursor = "";
   };
 
@@ -100,75 +103,79 @@ export function Hotspot3D({
         <sphereGeometry args={[radius, 12, 12]} />
       </mesh>
 
-      {/* Soft contact shadow so the artifact sits on the floor. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.37, 0]}>
-        <planeGeometry args={[radius * 2.4, radius * 2.4]} />
-        <meshBasicMaterial
-          map={shadowTex}
-          color={palette.isLight ? "#4a4436" : "#000000"}
-          transparent
-          opacity={palette.isLight ? 0.4 : 0.3}
-          depthWrite={false}
-        />
-      </mesh>
+      {showIndicator ? (
+        <>
+          {/* Soft contact shadow so the artifact sits on the floor. */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.37, 0]}>
+            <planeGeometry args={[radius * 2.4, radius * 2.4]} />
+            <meshBasicMaterial
+              map={shadowTex}
+              color={palette.isLight ? "#4a4436" : "#000000"}
+              transparent
+              opacity={palette.isLight ? 0.4 : 0.3}
+              depthWrite={false}
+            />
+          </mesh>
 
-      {/* Ground ring — the artifact's dais marking. */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
-        <torusGeometry args={[radius * 0.85, 0.035, 8, 36]} />
-        <meshStandardMaterial
-          color={orbAccent}
-          emissive={orbAccent}
-          emissiveIntensity={(hovered ? 2.4 : 1.4) * palette.glow}
-          toneMapped={false}
-        />
-      </mesh>
+          {/* Ground ring — the artifact's dais marking. */}
+          <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
+            <torusGeometry args={[radius * 0.85, 0.035, 8, 36]} />
+            <meshStandardMaterial
+              color={orbAccent}
+              emissive={orbAccent}
+              emissiveIntensity={(hovered ? 2.4 : 1.4) * palette.glow}
+              toneMapped={false}
+            />
+          </mesh>
 
-      {/* Tilted containment ring for depth. */}
-      <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]}>
-        <torusGeometry args={[radius * 0.62, 0.018, 6, 28]} />
-        <meshBasicMaterial
-          color={orbAccent}
-          transparent
-          opacity={hovered ? 0.85 : 0.5}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
+          {/* Tilted containment ring for depth. */}
+          <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]}>
+            <torusGeometry args={[radius * 0.62, 0.018, 6, 28]} />
+            <meshBasicMaterial
+              color={orbAccent}
+              transparent
+              opacity={hovered ? 0.85 : 0.5}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
 
-      {/* Faceted crystal body floating over an emissive core. */}
-      <group ref={orbRef}>
-        <mesh>
-          <octahedronGeometry args={[radius * 0.36, 0]} />
-          <meshStandardMaterial
-            color={palette.metal}
-            emissive={orbAccent}
-            emissiveIntensity={0.35 * palette.glow}
-            roughness={0.2}
-            metalness={0.35}
-            flatShading
-            toneMapped={false}
+          {/* Faceted crystal body floating over an emissive core. */}
+          <group ref={orbRef}>
+            <mesh>
+              <octahedronGeometry args={[radius * 0.36, 0]} />
+              <meshStandardMaterial
+                color={palette.metal}
+                emissive={orbAccent}
+                emissiveIntensity={0.35 * palette.glow}
+                roughness={0.2}
+                metalness={0.35}
+                flatShading
+                toneMapped={false}
+              />
+            </mesh>
+            <mesh ref={coreRef} scale={0.55}>
+              <icosahedronGeometry args={[radius * 0.36, 1]} />
+              <meshStandardMaterial
+                color={palette.plinth}
+                emissive={orbAccent}
+                emissiveIntensity={1.5 * palette.glow}
+                roughness={0.25}
+                metalness={0.2}
+                toneMapped={false}
+              />
+            </mesh>
+          </group>
+
+          <pointLight
+            position={[0, 0.4, 0]}
+            color={accent}
+            intensity={(hovered ? 5 : 3) * (palette.isLight ? 0.7 : 1)}
+            distance={5}
+            decay={2}
           />
-        </mesh>
-        <mesh ref={coreRef} scale={0.55}>
-          <icosahedronGeometry args={[radius * 0.36, 1]} />
-          <meshStandardMaterial
-            color={palette.plinth}
-            emissive={orbAccent}
-            emissiveIntensity={1.5 * palette.glow}
-            roughness={0.25}
-            metalness={0.2}
-            toneMapped={false}
-          />
-        </mesh>
-      </group>
-
-      <pointLight
-        position={[0, 0.4, 0]}
-        color={accent}
-        intensity={(hovered ? 5 : 3) * (palette.isLight ? 0.7 : 1)}
-        distance={5}
-        decay={2}
-      />
+        </>
+      ) : null}
       {children}
     </group>
   );
@@ -231,9 +238,9 @@ const PITCH_SPEED = 1.1;
 const PITCH_MIN = -0.65;
 const PITCH_MAX = 1.25;
 /** Input easing — accelerates in and glides to a stop on release. */
-const INPUT_EASE = 9;
+const INPUT_EASE = 16;
 /** How fast the camera eases toward the steered target (matches idle feel). */
-const FOLLOW_EASE = 2.8;
+const FOLLOW_EASE = 10;
 
 /**
  * Simple camera state machine: lerp between named poses, with a drag-steering
@@ -258,7 +265,7 @@ export function CameraDirector({
   allowSteering?: boolean;
   onPoseComplete?: (pose: string) => void;
 }) {
-  const { camera } = useThree();
+  const { camera, performance } = useThree();
   const isMobile = useIsMobile();
   const prefersReduced = usePrefersReducedMotion();
   const isReduced = reduced || prefersReduced;
@@ -268,6 +275,7 @@ export function CameraDirector({
   const offset = useMemo(() => new THREE.Vector3(), []);
   const steer = useRef({ yaw: 0, pitch: 0, ix: 0, iy: 0 });
   const completedPose = useRef<string | null>(null);
+  const lastPerformanceRegress = useRef(0);
 
   // A new pose re-frames the shot (and travel remounts the scene), so forget any
   // drag steering — the authored composition always starts clean.
@@ -281,7 +289,7 @@ export function CameraDirector({
     resetZoom();
   }, [pose]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const config = poses[pose] ?? poses[Object.keys(poses)[0]];
     if (!config) return;
     const dt = Math.min(delta, 0.05);
@@ -289,10 +297,19 @@ export function CameraDirector({
 
     // Sample the invisible joystick, then ease it so movement ramps in under
     // the finger and glides to a stop when it lifts (frame-rate independent).
-    const input = allowSteering ? getMoveInput() : { x: 0, y: 0 };
+    const input = getMoveInput();
+    if (
+      allowSteering &&
+      (input.x !== 0 || input.y !== 0) &&
+      dt > 0 &&
+      state.clock.elapsedTime - lastPerformanceRegress.current > 0.12
+    ) {
+      performance.regress();
+      lastPerformanceRegress.current = state.clock.elapsedTime;
+    }
     const ease = 1 - Math.exp(-INPUT_EASE * dt);
-    s.ix += (input.x - s.ix) * ease;
-    s.iy += (input.y - s.iy) * ease;
+    s.ix += ((allowSteering ? input.x : 0) - s.ix) * ease;
+    s.iy += ((allowSteering ? input.y : 0) - s.iy) * ease;
     // Horizontal drag orbits a full, unclamped 360°; vertical drag pitches.
     s.yaw += s.ix * YAW_SPEED * dt;
     s.pitch += s.iy * PITCH_SPEED * dt;
@@ -323,9 +340,8 @@ export function CameraDirector({
       camera.position.copy(targetPos);
       currentLook.copy(targetLook);
     } else {
-      const followEase = isMobile ? FOLLOW_EASE * 1.25 : FOLLOW_EASE;
-      camera.position.lerp(targetPos, 1 - Math.exp(-dt * followEase));
-      currentLook.lerp(targetLook, 1 - Math.exp(-dt * followEase));
+      camera.position.lerp(targetPos, 1 - Math.exp(-dt * FOLLOW_EASE));
+      currentLook.lerp(targetLook, 1 - Math.exp(-dt * FOLLOW_EASE));
     }
     camera.lookAt(currentLook);
 

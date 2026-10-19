@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import * as THREE from "three";
+import { AdaptiveDpr } from "@react-three/drei";
 import { useWorldState } from "@/lib/world/store";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { GalaxySky } from "@/components/world/GalaxySky";
@@ -98,7 +99,7 @@ export function SceneCanvas({
   if (!webglOk) return null;
 
   const dpr: [number, number] = quality === "high"
-    ? [1, 1.75]
+    ? [1, 1.5]
     : isMobile
       ? [1, 1.35]
       : [0.85, 1.1];
@@ -123,6 +124,11 @@ export function SceneCanvas({
     >
       <Canvas
         dpr={dpr}
+        performance={{
+          min: quality === "high" ? 0.65 : 0.55,
+          max: 1,
+          debounce: 250,
+        }}
         frameloop={frameloop}
         gl={{
           antialias: quality === "high" || isMobile,
@@ -140,6 +146,7 @@ export function SceneCanvas({
         <color attach="background" args={[background]} />
         {fog ? <fogExp2 attach="fog" args={[fog.color, fog.density]} /> : null}
         <Suspense fallback={null}>
+          <AdaptiveDpr />
           <GalaxySky quality={quality} reduced={reduced} />
           {children}
         </Suspense>

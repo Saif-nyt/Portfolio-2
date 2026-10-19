@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import {
@@ -25,6 +26,12 @@ import { usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#8fd8ff";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-5, 5],
+  [5, 5],
+  [-5, -6],
+  [5, -6],
+];
 
 const POSES: Record<string, CameraPose> = {
   // Looking at the closed doorway from outside.
@@ -87,6 +94,7 @@ export function TempleScene() {
           onPoseComplete={handlePoseComplete}
         />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.12} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* Interior fill — lifts the chamber just enough to read the stone,
             the alcoves and the dais without losing the ancient mood. */}

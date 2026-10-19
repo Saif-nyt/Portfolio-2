@@ -7,6 +7,7 @@ import { SceneScope } from "@/components/world/SceneScope";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
+import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
@@ -14,6 +15,12 @@ import { useSceneTheme } from "@/lib/world/scene-theme";
 import { SITE } from "@/lib/site";
 
 const ACCENT = "#ff8fb3";
+const GROWTH_POSITIONS: Array<[number, number]> = [
+  [-5.5, -3.4],
+  [-3, 5.2],
+  [3, 5.2],
+  [5.5, -3.4],
+];
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 2.6, 16], lookAt: [0, 2.6, 11] },
@@ -93,6 +100,7 @@ export function NexusScene() {
         <LightRig fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
         <AmbientMotes color={palette.mote} radius={6.5} height={4.5} count={80} />
+        <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the nexus */}
         <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={inside} />
