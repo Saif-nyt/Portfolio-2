@@ -134,7 +134,7 @@ export function WorldShell({
 }: WorldShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { activeObject, mapOpen, codex, collectionOpen, worldEntry } = useWorldState();
+  const { activeObject, mapOpen, codex, collectionOpen, worldEntry, pendingCodex } = useWorldState();
   const progress = useProgress();
   const level = levelFromXp(progress.xp);
 
@@ -168,11 +168,19 @@ export function WorldShell({
   useEffect(() => {
     if (prevPathname.current === pathname) return;
     prevPathname.current = pathname;
+    if (worldEntry === "entering") worldActions.completeWorldEntry();
     worldActions.closePanel();
     worldActions.toggleMap(false);
     worldActions.closeCodex();
     worldActions.toggleCollection(false);
-  }, [pathname]);
+  }, [pathname, worldEntry]);
+
+  // Cross-world actions can queue a codex for the destination (Forge → Contact).
+  // Consuming only on a matching pathname keeps the overlay from flashing on
+  // the origin page or being destroyed by the transition.
+  useEffect(() => {
+    if (pendingCodex) worldActions.consumeQueuedCodex(pathname);
+  }, [pathname, pendingCodex]);
 
   // Hide the conventional footer while the world occupies the viewport so
   // scrolling never reveals a standard portfolio underneath the game.
@@ -201,9 +209,12 @@ export function WorldShell({
   const goTo = useCallback(
     (id: LocationId) => {
       const target = LOCATION_BY_ID[id];
-      if (!target || target.href === pathname) return;
-      worldActions.closePanel();
+      if (!target) return;
+      // Always dismiss the map, including when the current node is chosen;
+      // otherwise the overlay appears to ignore the click.
       worldActions.toggleMap(false);
+      if (target.href === pathname) return;
+      worldActions.closePanel();
       worldActions.closeCodex();
       router.push(target.href);
     },
@@ -232,7 +243,7 @@ export function WorldShell({
       {homeNavigationVisible ? (
         <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex items-start justify-between gap-3 p-3 md:top-[4.5rem] sm:p-4">
         <div className="pointer-events-auto flex flex-col gap-1">
-          <p className="panel rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.26em] text-dim uppercase">
+          <p className="panel max-w-[42vw] truncate rounded-full px-3.5 py-1.5 font-mono text-[0.58rem] tracking-[0.26em] text-dim uppercase">
             {location.number}{" "}
             <span style={{ color: accent }}>· {location.title}</span>
           </p>
@@ -301,13 +312,15 @@ export function WorldShell({
           {children}
 
           <AnimatePresence>
-            {showScene && homeNavigationVisible ? <WorldHint accent={accent} /> : null}
+            {showScene && homeNavigationVisible && worldEntry !== "entering" ? (
+              <WorldHint accent={accent} />
+            ) : null}
           </AnimatePresence>
 
           {/* Slim accessible nav strip: keyboard/screen-reader users can always
               move between locations. Inside the scene so it scrolls away with
               it instead of parking on top of the footer. */}
-          {homeNavigationVisible ? (
+          {homeNavigationVisible && worldEntry !== "entering" ? (
             <motion.nav
               aria-label="World locations"
               initial={locationId === "arrival" ? { opacity: 0, y: 12 } : false}

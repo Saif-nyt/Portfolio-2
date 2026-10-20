@@ -6,12 +6,17 @@ import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
+import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions, useWorldState } from "@/lib/world/store";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme, mixHex } from "@/lib/world/scene-theme";
+import { readJson, writeJson } from "@/lib/storage";
 import { Campsite } from "./Campsite";
 import { Forest } from "./Forest";
+import { GateCinematic } from "./GateCinematic";
+
+const WORLD_ENTERED_KEY = "world-entered";
 
 const ACCENT = "#63f5e7";
 const PATH_WIDTH = 1.45;
@@ -223,19 +228,35 @@ function FloatingIsland({
 }
 
 /** The distant temple silhouette visible from the valley. */
-function DistantTemple() {
+function DistantTemple({
+  position = [0, 0, -36] as [number, number, number],
+  scale = 3.4,
+}: {
+  position?: [number, number, number];
+  scale?: number;
+}) {
   const palette = useSceneTheme();
   return (
-    <group position={[-6, 0, -4]}>
-      <mesh position={[0, 1.8, 0]}>
-        <boxGeometry args={[2.4, 3.6, 2]} />
+    <group position={position} scale={scale}>
+      <mesh position={[0, 0.35, 0]} receiveShadow>
+        <boxGeometry args={[5.6, 0.7, 4.6]} />
+        <meshStandardMaterial color={palette.stoneDark} roughness={0.98} flatShading />
+      </mesh>
+      <mesh position={[0, 2.3, 0]}>
+        <boxGeometry args={[2.8, 3.6, 2.2]} />
         <meshStandardMaterial color={palette.stoneDark} roughness={0.95} flatShading />
       </mesh>
-      <mesh position={[0, 4, 0]}>
-        <coneGeometry args={[1.9, 1.6, 4]} />
-        <meshStandardMaterial color={palette.stone} emissive={palette.accent("#8fd8ff")} emissiveIntensity={0.3} />
+      <mesh position={[0, 4.5, 0]}>
+        <coneGeometry args={[2.2, 2, 4]} />
+        <meshStandardMaterial color={palette.stone} emissive={palette.accent("#8fd8ff")} emissiveIntensity={0.34} flatShading />
       </mesh>
-      <pointLight position={[0, 4.5, 0.5]} color="#8fd8ff" intensity={3} distance={6} decay={2} />
+      {[-2.1, 2.1].map((x) => (
+        <mesh key={x} position={[x, 2.2, 1.4]}>
+          <cylinderGeometry args={[0.22, 0.3, 4.2, 6]} />
+          <meshStandardMaterial color={palette.stoneDark} roughness={0.98} flatShading />
+        </mesh>
+      ))}
+      <pointLight position={[0, 4.8, 0.6]} color="#8fd8ff" intensity={4} distance={9} decay={2} />
     </group>
   );
 }
@@ -292,15 +313,22 @@ export function ArrivalScene() {
   const isMobile = useIsMobile();
   const { quality, worldEntry } = useWorldState();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
+  const [gateCleared, setGateCleared] = useState(false);
   const palette = useSceneTheme({ bg: "#d6ddd0", fog: "#dfe6da" });
-  const handlePoseComplete = useCallback(
-    (completedPose: string) => {
-      if (completedPose === "overview" && worldEntry === "entering") {
-        worldActions.completeWorldEntry();
-      }
-    },
-    [worldEntry],
-  );
+
+  // Opening the gate clears the camera only once the leaves actually part.
+  const handleGateOpened = useCallback(() => setGateCleared(true), []);
+
+  const finishEntry = useCallback(() => {
+    writeJson(WORLD_ENTERED_KEY, true);
+    worldActions.completeWorldEntry();
+  }, []);
+
+  const skipEntry = useCallback(() => finishEntry(), [finishEntry]);
+
+  // The value is intentionally read once per mount: it only decides whether
+  // the entry copy mentions a skippable repeat visit.
+  const [visitedBefore] = useState(() => readJson<boolean>(WORLD_ENTERED_KEY, false));
 
   return (
     <SceneScope accent={ACCENT}>
@@ -308,7 +336,10 @@ export function ArrivalScene() {
         cameraPosition={POSES.entrance.position}
         cameraFov={isMobile ? 72 : 46}
         background={palette.bg}
-        fog={{ color: palette.fog, density: palette.fogDensity }}
+        fog={{
+          color: palette.fog,
+          density: palette.isLight ? 0.022 : 0.018,
+        }}
         animate={worldEntry !== "outside"}
         interactive={worldEntry === "inside"}
       >
@@ -318,7 +349,13 @@ export function ArrivalScene() {
           poses={POSES}
           reduced={reduced}
           allowSteering={worldEntry === "inside"}
-          onPoseComplete={handlePoseComplete}
+          suspended={worldEntry === "entering"}
+        />
+        <GateCinematic
+          active={worldEntry === "entering"}
+          cleared={gateCleared}
+          reduced={reduced}
+          onComplete={finishEntry}
         />
 
         <ValleyTerrain />
@@ -330,10 +367,12 @@ export function ArrivalScene() {
           width={6.2}
           height={6.8}
           scale={1.2}
+          onOpened={handleGateOpened}
         />
 
+        <DistantHorizon accent={ACCENT} scale={1.25} quality={quality} />
         <ValleyPath />
-        <DistantTemple />
+        <DistantTemple position={[0, 0, -38]} scale={3.8} />
         <MapPedestal />
         <Campsite quality={quality} reduced={reduced} />
         <Forest quality={quality} reduced={reduced} />
@@ -379,9 +418,10 @@ export function ArrivalScene() {
 
         {/* Temple beacon → About */}
         <Hotspot3D
-          position={[-6, 3.2, -4]}
-          radius={1}
+          position={[0, 8, -38]}
+          radius={5}
           accent="#8fd8ff"
+          showIndicator={false}
           object={{
             id: "temple",
             eyebrow: "ANCIENT TEMPLE · 02",
@@ -446,7 +486,7 @@ export function ArrivalScene() {
       />
 
       {worldEntry === "outside" ? (
-        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-32 pb-28 text-center sm:pt-36">
+        <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-24 pb-20 text-center sm:pt-36 sm:pb-28">
         <div className="flex w-full max-w-2xl flex-col items-center gap-5 sm:gap-6">
           <p className="font-mono text-[0.62rem] tracking-[0.3em] text-accent uppercase">
             NEBULA · THE DIGITAL FRONTIER
@@ -463,15 +503,39 @@ export function ArrivalScene() {
               type="button"
               onClick={() => {
                 setPose("overview");
+                setGateCleared(false);
                 worldActions.beginWorldEntry();
               }}
               className="btn-primary"
             >
-              Enter World
+              {visitedBefore ? "Enter World Again" : "Enter World"}
             </button>
           </div>
+          <p className="pointer-events-none font-mono text-[0.56rem] tracking-[0.2em] text-faint uppercase">
+            {visitedBefore ? "Returning through the gate" : "The gate will open, then the camera follows"}
+          </p>
         </div>
       </div>
+      ) : null}
+
+      {worldEntry === "entering" ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex flex-col items-center gap-3 px-6 text-center sm:bottom-28">
+          <p
+            role="status"
+            className="font-mono text-[0.58rem] tracking-[0.24em] text-ink/80 uppercase"
+          >
+            {gateCleared ? "Crossing the threshold…" : "The gate is opening…"}
+          </p>
+          {visitedBefore ? (
+            <button
+              type="button"
+              onClick={skipEntry}
+              className="pointer-events-auto rounded-full border border-line bg-[var(--veil)] px-4 py-2 font-mono text-[0.56rem] tracking-[0.18em] text-dim uppercase backdrop-blur-md transition hover:border-linestrong hover:text-accent"
+            >
+              Skip intro
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </SceneScope>
   );

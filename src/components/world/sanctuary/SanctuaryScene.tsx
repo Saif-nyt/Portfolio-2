@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
+import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
@@ -104,6 +105,7 @@ export function SanctuaryScene() {
       >
         <LightRig fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <DistantHorizon accent={ACCENT} scale={1.05} />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.13} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 

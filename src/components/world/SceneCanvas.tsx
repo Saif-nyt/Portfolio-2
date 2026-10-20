@@ -60,11 +60,13 @@ export function SceneCanvas({
   animate = true,
   interactive = true,
 }: SceneCanvasProps) {
-  const { quality, activeObject, mapOpen, codex } = useWorldState();
+  const { quality, activeObject, mapOpen, codex, worldEntry } = useWorldState();
   const isMobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
   const [tabHidden, setTabHidden] = useState(false);
+  const [offscreen, setOffscreen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const glRef = useRef<THREE.WebGLRenderer | null>(null);
 
   // Next.js keeps visited routes mounted and hides them with `display:none`
@@ -96,24 +98,49 @@ export function SceneCanvas({
     return () => document.removeEventListener("visibilitychange", sync);
   }, []);
 
+  // Next's route cache keeps visited routes mounted. R3F does not stop its
+  // loop just because the route is hidden, so without this every cached route
+  // keeps rendering — two or three full scenes on the GPU at once. Observe the
+  // wrapper itself; `display:none` (and scrolling the scene away) reports as
+  // not intersecting and drops the canvas to demand rendering.
+  useEffect(() => {
+    const node = wrapRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOffscreen(!entry.isIntersecting || entry.intersectionRatio <= 0),
+      { threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   if (!webglOk) return null;
 
   const dpr: [number, number] = quality === "high"
-    ? [1, 1.5]
+    ? [1, 1.35]
     : isMobile
-      ? [1, 1.35]
-      : [0.85, 1.1];
+      ? [1, 1.2]
+      : [0.8, 1.05];
   // Idle loops (flora, rings, particles) run only when motion is welcome and
-  // nothing is covering the scene; a hidden tab, reduced-motion preference,
-  // open panel/map, or open codex all drop to on-demand frames.
+  // nothing is covering the scene; a hidden tab, an offscreen cached route,
+  // reduced-motion preference, open panel/map, or open codex all drop to
+  // on-demand frames.
   const covered = Boolean(activeObject) || mapOpen || codex !== null;
-  const frameloop = animate && !reduced && !tabHidden && !covered ? "always" : "demand";
+  // A gate entry must always get frames, even under reduced motion, so the
+  // clearance event and the (snapped) handoff can complete instead of
+  // stranding the visitor outside a half-open door.
+  const entering = worldEntry === "entering";
+  const frameloop =
+    (entering || (animate && !reduced)) && !tabHidden && !offscreen && !covered
+      ? "always"
+      : "demand";
 
   return (
     // `touch-action: none` scopes the world's drag navigation to the canvas:
     // touches here never scroll or zoom, while HUD buttons, links and any
     // overlay outside this element keep their normal browser gestures.
     <div
+      ref={wrapRef}
       aria-hidden="true"
       className="absolute inset-0"
       style={{
@@ -125,17 +152,23 @@ export function SceneCanvas({
       <Canvas
         dpr={dpr}
         performance={{
-          min: quality === "high" ? 0.65 : 0.55,
+          min: quality === "high" ? 0.75 : 0.6,
           max: 1,
-          debounce: 250,
+          debounce: 400,
         }}
         frameloop={frameloop}
         gl={{
-          antialias: quality === "high" || isMobile,
+          antialias: quality === "high" && !isMobile,
           powerPreference: "high-performance",
           alpha: false,
+          stencil: false,
         }}
-        camera={{ fov: isMobile ? Math.max(cameraFov, 64) : cameraFov, near: 0.1, far: 120, position: cameraPosition }}
+        camera={{
+          fov: isMobile ? Math.max(cameraFov, 64) : cameraFov,
+          near: 0.15,
+          far: 700,
+          position: cameraPosition,
+        }}
         onCreated={({ gl }) => {
           glRef.current = gl;
           gl.toneMapping = THREE.ACESFilmicToneMapping;

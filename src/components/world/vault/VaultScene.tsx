@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
+import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
@@ -140,6 +141,12 @@ function artifactDetails(project: ProjectSummary, i: number) {
     `Reference ART-${String(i + 1).padStart(2, "0")} · ${kindLabel(project)}`,
     `Discipline · ${project.categoryLabel ?? project.category}`,
   ];
+  if (project.role) {
+    bullets.push(`Role · ${project.role}`);
+  }
+  if (project.problem) {
+    bullets.push(`Problem · ${project.problem}`);
+  }
   if (project.stack && project.stack.length > 0) {
     bullets.push(`Stack · ${project.stack.slice(0, 5).join(", ")}`);
   }
@@ -149,7 +156,7 @@ function artifactDetails(project: ProjectSummary, i: number) {
   bullets.push(
     project.results
       ? `Outcome · ${project.results}`
-      : "Outcome · Verified results pending review",
+      : "Outcome · Not yet published",
   );
 
   return {
@@ -247,6 +254,7 @@ export function VaultScene() {
       >
         <LightRig fillColor={ACCENT} intensity={0.8} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSE_STATES} />
+        <DistantHorizon accent={ACCENT} scale={1.2} />
         <AmbientMotes color={palette.mote} radius={6.5} height={3.8} count={48} size={0.1} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 

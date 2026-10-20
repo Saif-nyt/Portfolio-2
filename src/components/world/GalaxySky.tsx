@@ -12,63 +12,97 @@ interface GalaxySkyProps {
   reduced: boolean;
 }
 
-let nebulaTexture: THREE.CanvasTexture | null = null;
+/**
+ * A deep-space sky rendered as a huge camera-locked sphere. The sphere never
+ * reveals an edge or a seam: it is larger than the camera's far plane from
+ * every reachable position and its shader is authored in direction space, so
+ * there is no gradient that reads as a painted ceiling. Stars are a separate
+ * point cloud for crisp sub-pixel highlights; faint galactic structure and
+ * atmospheric haze are procedural and cost one fragment shader pass.
+ */
 
-function getNebulaTexture(): THREE.CanvasTexture {
-  if (nebulaTexture) return nebulaTexture;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 1536;
-  canvas.height = 768;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Could not create the procedural galaxy sky texture");
-
-  const { width, height } = canvas;
-  const background = context.createLinearGradient(0, 0, 0, height);
-  background.addColorStop(0, "#040b10");
-  background.addColorStop(0.35, "#07151b");
-  background.addColorStop(0.5, "#0b2529");
-  background.addColorStop(0.62, "#18332f");
-  background.addColorStop(0.67, "#493b30");
-  background.addColorStop(0.72, "#795034");
-  background.addColorStop(0.78, "#30231f");
-  background.addColorStop(1, "#091014");
-  context.fillStyle = background;
-  context.fillRect(0, 0, width, height);
-
-  context.globalCompositeOperation = "lighter";
-  for (let i = 0; i < 150; i += 1) {
-    const x = hash01(i * 7 + 1) * width;
-    const band = 0.5 + Math.sin((x / width) * Math.PI * 2 + 0.4) * 0.1;
-    const y = (band + (hash01(i * 7 + 2) - 0.5) * 0.26) * height;
-    const radiusX = 28 + hash01(i * 7 + 3) * 155;
-    const radiusY = 8 + hash01(i * 7 + 4) * 55;
-    const colors = ["54, 107, 113", "85, 140, 143", "39, 83, 94", "55, 100, 91", "167, 112, 67"];
-    const color = colors[Math.floor(hash01(i * 7 + 5) * colors.length)];
-
-    context.save();
-    context.translate(x, y);
-    context.rotate((hash01(i * 7 + 6) - 0.5) * 0.42);
-    context.scale(radiusX, radiusY);
-    const cloud = context.createRadialGradient(0, 0, 0.03, 0, 0, 1);
-    cloud.addColorStop(0, `rgba(${color}, ${0.05 + hash01(i * 7 + 7) * 0.08})`);
-    cloud.addColorStop(0.38, `rgba(${color}, 0.04)`);
-    cloud.addColorStop(1, `rgba(${color}, 0)`);
-    context.fillStyle = cloud;
-    context.beginPath();
-    context.arc(0, 0, 1, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
-  }
-  context.globalCompositeOperation = "source-over";
-
-  nebulaTexture = new THREE.CanvasTexture(canvas);
-  nebulaTexture.colorSpace = THREE.SRGBColorSpace;
-  nebulaTexture.wrapS = THREE.RepeatWrapping;
-  nebulaTexture.wrapT = THREE.ClampToEdgeWrapping;
-  nebulaTexture.anisotropy = 4;
-  return nebulaTexture;
+const SKY_VERTEX = /* glsl */ `
+varying vec3 vDir;
+void main() {
+  vDir = normalize(position);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
+`;
+
+const SKY_FRAGMENT = /* glsl */ `
+varying vec3 vDir;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+void main() {
+  vec3 d = normalize(vDir);
+  float height = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+
+  // Midnight zenith fading to a cold, hazy atmosphere at the local horizon.
+  vec3 zenith = vec3(0.003, 0.005, 0.016);
+  vec3 middle = vec3(0.006, 0.018, 0.042);
+  vec3 horizon = vec3(0.010, 0.040, 0.070);
+  vec3 color = mix(horizon, middle, smoothstep(0.44, 0.64, height));
+  color = mix(color, zenith, smoothstep(0.62, 1.0, height));
+
+  // A narrow, very faint teal haze — atmospheric depth, not a dome band.
+  float haze = exp(-pow((d.y + 0.01) * 16.0, 2.0));
+  color += vec3(0.015, 0.055, 0.065) * haze * 0.55;
+
+  // Flat, equirectangular star grid: stable in direction space so camera
+  // rotation never makes stars crawl or re-roll.
+  vec2 sphere = vec2(
+    atan(d.z, d.x) / 6.2831853 + 0.5,
+    asin(clamp(d.y, -1.0, 1.0)) / 3.1415926 + 0.5
+  );
+
+  vec2 gridA = sphere * vec2(260.0, 130.0);
+  vec2 cellA = floor(gridA);
+  vec2 fA = fract(gridA);
+  float seedA = hash21(cellA);
+  vec2 offsetA = vec2(hash21(cellA + 7.1), hash21(cellA + 11.7));
+  float starA = smoothstep(0.055, 0.0, length(fA - offsetA)) * step(0.958, seedA) * 0.86;
+
+  vec2 gridB = sphere * vec2(120.0, 60.0);
+  vec2 cellB = floor(gridB);
+  vec2 fB = fract(gridB);
+  float seedB = hash21(cellB + 19.3);
+  vec2 offsetB = vec2(hash21(cellB + 3.3), hash21(cellB + 29.1));
+  float starB = smoothstep(0.085, 0.0, length(fB - offsetB)) * step(0.988, seedB);
+
+  float star = starA * 0.85 + starB * 0.55;
+  vec3 starColor = mix(vec3(0.65, 0.82, 0.90), vec3(1.0, 0.94, 0.82), seedA);
+
+  // Restrained galactic band crossing the sky diagonally.
+  float band = exp(-pow(abs(dot(d, normalize(vec3(0.18, 0.72, 0.67)))), 2.0) * 20.0);
+  float cloud = noise(sphere * vec2(8.0, 4.0) + 3.4);
+  cloud = cloud * 0.6 + noise(sphere * vec2(18.0, 9.0)) * 0.3;
+  vec3 nebulaColor = mix(vec3(0.008, 0.035, 0.060), vec3(0.020, 0.100, 0.120), cloud);
+  color += nebulaColor * band * 0.42;
+
+  color += starColor * star;
+
+  // Dither out 8-bit banding in the very dark gradient.
+  color += (hash21(gl_FragCoord.xy) - 0.5) / 255.0;
+
+  gl_FragColor = vec4(color, 1.0);
+}
+`;
 
 function makeStarField(count: number, radius: number) {
   const positions = new Float32Array(count * 3);
@@ -80,7 +114,7 @@ function makeStarField(count: number, radius: number) {
     const y = hash01(i * 4 + 1) * 2 - 1;
     const angle = hash01(i * 4 + 2) * Math.PI * 2;
     const ring = Math.sqrt(1 - y * y);
-    const distance = radius * (0.88 + hash01(i * 4 + 3) * 0.12);
+    const distance = radius * (0.9 + hash01(i * 4 + 3) * 0.1);
     positions[i * 3] = Math.cos(angle) * ring * distance;
     positions[i * 3 + 1] = y * distance;
     positions[i * 3 + 2] = Math.sin(angle) * ring * distance;
@@ -97,41 +131,41 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
   const sky = useRef<THREE.Group>(null);
   const starsMaterial = useRef<THREE.PointsMaterial>(null);
   const palette = useSceneTheme();
-  const count = quality === "high" ? 3200 : 1100;
-  const stars = useMemo(() => makeStarField(count, 86), [count]);
+  const count = quality === "high" ? 2600 : 900;
+  const stars = useMemo(() => makeStarField(count, 260), [count]);
   const texture = useMemo(() => getDotTexture(), []);
-  const nebula = useMemo(() => getNebulaTexture(), []);
 
   useFrame(({ camera, clock }, delta) => {
     if (!sky.current) return;
     sky.current.position.copy(camera.position);
     if (!reduced) {
-      sky.current.rotation.y += delta * 0.00065;
-      sky.current.rotation.z = Math.sin(clock.elapsedTime * 0.025) * 0.018;
+      sky.current.rotation.y += delta * 0.00035;
       if (starsMaterial.current) {
-        starsMaterial.current.opacity = 0.86 + Math.sin(clock.elapsedTime * 0.65) * 0.06;
+        starsMaterial.current.opacity = 0.82 + Math.sin(clock.elapsedTime * 0.4) * 0.05;
       }
     }
   });
 
+  // The daylight theme is a separate, intentional palette — a pale sky is
+  // supplied by the scene clear colour instead of forcing midnight on it.
   if (palette.isLight) return null;
 
   return (
-    <group ref={sky}>
-      <mesh>
-        <sphereGeometry args={[94, 48, 32]} />
-        <meshBasicMaterial
-          map={nebula}
-          color="#ffffff"
+    <group ref={sky} renderOrder={-1000}>
+      <mesh renderOrder={-1000} frustumCulled={false}>
+        <sphereGeometry args={[500, 48, 32]} />
+        <shaderMaterial
+          vertexShader={SKY_VERTEX}
+          fragmentShader={SKY_FRAGMENT}
           side={THREE.BackSide}
-          transparent
-          opacity={0.72}
           depthWrite={false}
+          depthTest={false}
           fog={false}
           toneMapped={false}
         />
       </mesh>
-      <points frustumCulled={false}>
+
+      <points renderOrder={-999} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[stars.positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[stars.colors, 3]} />
@@ -139,17 +173,50 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
         <pointsMaterial
           ref={starsMaterial}
           map={texture}
-          size={0.3}
+          size={1.35}
           sizeAttenuation
           vertexColors
           transparent
-          opacity={0.86}
+          opacity={0.84}
           depthWrite={false}
+          depthTest={false}
           fog={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}
         />
       </points>
+
+      {/* A distant moon / planet: soft glow first, a dim disc on top. */}
+      <sprite position={[132, 58, -236]} scale={[64, 64, 1]} renderOrder={-998}>
+        <spriteMaterial
+          map={texture}
+          color="#5f93a8"
+          transparent
+          opacity={0.14}
+          depthWrite={false}
+          depthTest={false}
+          fog={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
+      <mesh position={[132, 58, -236]} renderOrder={-997}>
+        <sphereGeometry args={[9, 24, 16]} />
+        <meshBasicMaterial color="#0a2735" fog={false} depthWrite={false} depthTest={false} toneMapped={false} />
+      </mesh>
+      <sprite position={[132, 58, -236]} scale={[20, 20, 1]} renderOrder={-996}>
+        <spriteMaterial
+          map={texture}
+          color="#9cc6d4"
+          transparent
+          opacity={0.22}
+          depthWrite={false}
+          depthTest={false}
+          fog={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
     </group>
   );
 }

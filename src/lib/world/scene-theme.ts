@@ -92,7 +92,7 @@ interface LightTint {
 const DARK: Omit<ScenePalette, "theme" | "isLight" | "accent"> = {
   bg: "#050d0c",
   fog: "#07110f",
-  fogDensity: 0.04,
+  fogDensity: 0.024,
   stone: "#243b35",
   stoneDark: "#16241f",
   stoneLight: "#33544a",
@@ -116,7 +116,7 @@ const DARK: Omit<ScenePalette, "theme" | "isLight" | "accent"> = {
 const LIGHT_BASE: Omit<ScenePalette, "theme" | "isLight" | "accent"> = {
   bg: "#dfdacb",
   fog: "#e8e3d4",
-  fogDensity: 0.028,
+  fogDensity: 0.02,
   stone: "#c9c3b1",
   stoneDark: "#a7a190",
   stoneLight: "#e3dece",

@@ -35,6 +35,12 @@ interface WorldState {
   collectionOpen: boolean;
   /** Reduced-effort rendering tier for weaker devices. */
   quality: RenderQuality;
+  /**
+   * Codex to open only after arriving at `href`. Used by cross-world actions
+   * such as Forge "Discuss" → Contact, where opening immediately would be
+   * closed by the route transition.
+   */
+  pendingCodex: { section: CodexSection; href: string } | null;
 }
 
 let state: WorldState = {
@@ -44,6 +50,7 @@ let state: WorldState = {
   codex: null,
   collectionOpen: false,
   quality: "high",
+  pendingCodex: null,
 };
 
 const listeners = new Set<() => void>();
@@ -72,6 +79,7 @@ const SERVER_STATE: WorldState = {
   codex: null,
   collectionOpen: false,
   quality: "high",
+  pendingCodex: null,
 };
 
 function getServerSnapshot(): WorldState {
@@ -116,6 +124,29 @@ export const worldActions = {
     if (section === state.codex) return;
     state = { ...state, codex: section, activeObject: null, mapOpen: false, collectionOpen: false };
     emit();
+  },
+  /** Arm a codex for the next route, without flashing it on the current one. */
+  queueCodex(section: CodexSection, href: string) {
+    state = { ...state, pendingCodex: { section, href } };
+    emit();
+  },
+  /**
+   * Called by the destination shell once its pathname matches. Returns true if
+   * a queued codex was opened.
+   */
+  consumeQueuedCodex(pathname: string): boolean {
+    const pending = state.pendingCodex;
+    if (!pending || pending.href !== pathname) return false;
+    state = {
+      ...state,
+      pendingCodex: null,
+      codex: pending.section,
+      activeObject: null,
+      mapOpen: false,
+      collectionOpen: false,
+    };
+    emit();
+    return true;
   },
   closeCodex() {
     if (!state.codex) return;

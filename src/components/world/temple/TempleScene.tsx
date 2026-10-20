@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
+import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { RiseBeam } from "@/components/world/cinematics";
@@ -93,6 +94,7 @@ export function TempleScene() {
           allowSteering={inside}
           onPoseComplete={handlePoseComplete}
         />
+        <DistantHorizon accent={ACCENT} scale={1.15} />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.12} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 

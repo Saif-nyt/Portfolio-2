@@ -23,7 +23,7 @@ export function ProjectCard({ project, featured = false, index = 0 }: ProjectCar
             featured ? "aspect-[16/9] sm:aspect-[21/9]" : "aspect-[16/10]"
           }`}
         >
-          <ProjectVisual project={project} sizes={featured ? "(min-width: 640px) 50vw, 100vw" : "(min-width: 768px) 50vw, 100vw"} />
+          <ProjectVisual project={project} sizes={featured ? "(min-width: 768px) 60vw, 100vw" : "(min-width: 768px) 50vw, 100vw"} />
           <span className="absolute left-4 top-4 rounded-full border border-linestrong bg-[var(--veil)] px-3 py-1 font-mono text-[0.65rem] tracking-[0.16em] text-accent backdrop-blur-md">
             {PROJECT_KIND_LABELS[project.kind ?? "concept"]}
           </span>

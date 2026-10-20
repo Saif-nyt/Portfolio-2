@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/lib/hooks";
@@ -32,6 +32,12 @@ export interface TempleEntranceProps {
   height?: number;
   /** Scale the whole gateway (columns, jamb, pediment) uniformly. */
   scale?: number;
+  /**
+   * Fired once when both leaves have reached clearance. The Home cinematic
+   * uses this instead of a timeout so the camera can never fly through a
+   * half-open door.
+   */
+  onOpened?: () => void;
 }
 
 export function TempleEntrance({
@@ -42,6 +48,7 @@ export function TempleEntrance({
   width = 2.2,
   height = 3.4,
   scale = 1,
+  onOpened,
 }: TempleEntranceProps) {
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme();
@@ -57,6 +64,11 @@ export function TempleEntrance({
     rightVelocity: 0,
     open,
   });
+  const openedRef = useRef(false);
+  const onOpenedRef = useRef(onOpened);
+  useEffect(() => {
+    onOpenedRef.current = onOpened;
+  }, [onOpened]);
   const pediment = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-halfW - 1.05, 0);
@@ -86,9 +98,11 @@ export function TempleEntrance({
         spring[velocity] = 0;
         return;
       }
+      // Heavier spring: large stone leaves accelerate slowly, drift through a
+      // short overshoot and settle — no snappy, mechanical snap.
       const displacement = target - hinge.rotation.y;
-      spring[velocity] += displacement * 23 * dt;
-      spring[velocity] *= Math.exp(-8.5 * dt);
+      spring[velocity] += displacement * 9.5 * dt;
+      spring[velocity] *= Math.exp(-5.2 * dt);
       hinge.rotation.y += spring[velocity] * dt;
       if (Math.abs(displacement) < 0.001 && Math.abs(spring[velocity]) < 0.001) {
         hinge.rotation.y = target;
@@ -100,14 +114,29 @@ export function TempleEntrance({
       updateHinge(leftRef.current, "leftVelocity", open ? openingAngle : 0);
     }
     if (rightRef.current) {
-      const rightTarget = open && spring.elapsed > 0.16 ? -openingAngle : 0;
+      const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
       updateHinge(rightRef.current, "rightVelocity", rightTarget);
     }
     if (sealRef.current) {
       const opacity = open ? 0 : 0.72;
       sealRef.current.opacity = reduced
         ? opacity
-        : THREE.MathUtils.damp(sealRef.current.opacity, opacity, 2.1, dt);
+        : THREE.MathUtils.damp(sealRef.current.opacity, opacity, 1.7, dt);
+    }
+
+    // Clearance event, not a timer: both leaves must be past ~86% of their
+    // travel before the cinematic is allowed to move the camera through.
+    if (!open) {
+      openedRef.current = false;
+    } else if (
+      !openedRef.current &&
+      leftRef.current &&
+      rightRef.current &&
+      leftRef.current.rotation.y > openingAngle * 0.86 &&
+      rightRef.current.rotation.y < -openingAngle * 0.86
+    ) {
+      openedRef.current = true;
+      onOpenedRef.current?.();
     }
   });
 

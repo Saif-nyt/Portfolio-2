@@ -257,15 +257,18 @@ export function CameraDirector({
   poses,
   reduced = false,
   allowSteering = true,
+  suspended = false,
   onPoseComplete,
 }: {
   pose: string;
   poses: Record<string, CameraPose>;
   reduced?: boolean;
   allowSteering?: boolean;
+  /** Yield camera control to a scripted cinematic (gate entry, etc.). */
+  suspended?: boolean;
   onPoseComplete?: (pose: string) => void;
 }) {
-  const { camera, performance } = useThree();
+  const { camera } = useThree();
   const isMobile = useIsMobile();
   const prefersReduced = usePrefersReducedMotion();
   const isReduced = reduced || prefersReduced;
@@ -275,7 +278,6 @@ export function CameraDirector({
   const offset = useMemo(() => new THREE.Vector3(), []);
   const steer = useRef({ yaw: 0, pitch: 0, ix: 0, iy: 0 });
   const completedPose = useRef<string | null>(null);
-  const lastPerformanceRegress = useRef(0);
 
   // A new pose re-frames the shot (and travel remounts the scene), so forget any
   // drag steering — the authored composition always starts clean.
@@ -289,7 +291,8 @@ export function CameraDirector({
     resetZoom();
   }, [pose]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
+    if (suspended) return;
     const config = poses[pose] ?? poses[Object.keys(poses)[0]];
     if (!config) return;
     const dt = Math.min(delta, 0.05);
@@ -298,15 +301,6 @@ export function CameraDirector({
     // Sample the invisible joystick, then ease it so movement ramps in under
     // the finger and glides to a stop when it lifts (frame-rate independent).
     const input = getMoveInput();
-    if (
-      allowSteering &&
-      (input.x !== 0 || input.y !== 0) &&
-      dt > 0 &&
-      state.clock.elapsedTime - lastPerformanceRegress.current > 0.12
-    ) {
-      performance.regress();
-      lastPerformanceRegress.current = state.clock.elapsedTime;
-    }
     const ease = 1 - Math.exp(-INPUT_EASE * dt);
     s.ix += ((allowSteering ? input.x : 0) - s.ix) * ease;
     s.iy += ((allowSteering ? input.y : 0) - s.iy) * ease;

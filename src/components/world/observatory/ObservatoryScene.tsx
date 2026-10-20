@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
+import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
@@ -364,6 +365,7 @@ export function ObservatoryScene() {
       >
         <LightRig fillColor={ACCENT} intensity={0.75} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <DistantHorizon accent={ACCENT} scale={1} />
         <AmbientMotes color={palette.mote} radius={7} height={5.5} count={110} size={0.16} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 

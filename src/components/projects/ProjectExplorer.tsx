@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Search } from "lucide-react";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { projectCategories } from "@/data/projects";
@@ -91,21 +91,17 @@ export function ProjectExplorer({ projects }: ProjectExplorerProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {visible.map((project, index) => (
-            <motion.div
-              key={project.slug}
-              layout={!reduceMotion}
-              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-              animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className={index === 0 ? "md:col-span-2" : undefined}
-            >
-              <ProjectCard project={project} featured={index === 0} index={index} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {visible.map((project, index) => (
+          <motion.div
+            key={project.slug}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            className={index === 0 ? "md:col-span-2" : undefined}
+          >
+            <ProjectCard project={project} featured={index === 0} index={index} />
+          </motion.div>
+        ))}
 
         {visible.length === 0 ? (
           <p role="status" className="panel rounded-3xl p-10 text-center text-dim md:col-span-2">

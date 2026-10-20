@@ -24,6 +24,7 @@ export interface ProjectSummary {
   tools?: string[];
   services?: string[];
   role?: string;
+  problem?: string;
   results?: string | null;
 }
 

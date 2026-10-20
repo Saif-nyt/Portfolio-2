@@ -160,6 +160,10 @@ export function WorldNavSurface({
     // Capture phase: runs before the raycast canvas sees the click, so a drag
     // never fires an artifact / button. A plain tap is left untouched.
     const onClickCapture = (event: MouseEvent) => {
+      // Never swallow a real control's click, even immediately after a swipe:
+      // the user lifted on a button, so that is the intent. Only trailing
+      // clicks on world space are treated as accidental post-drag taps.
+      if (isInteractive(event.target)) return;
       if (performance.now() > suppressClickUntil) return;
       suppressClickUntil = 0;
       event.stopPropagation();
