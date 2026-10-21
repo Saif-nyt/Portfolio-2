@@ -365,35 +365,6 @@ export function VaultScene() {
             {count} case {count === 1 ? "study" : "studies"} · choose a project to explore its build story.
           </p>
         )}
-        {hasArtifacts ? (
-          <nav
-            aria-label="Featured case studies"
-            className="pointer-events-auto mt-4 flex w-full max-w-4xl gap-2 overflow-x-auto px-1 pb-2 text-left sm:mt-5"
-          >
-            {visible.map((project, i) => {
-              const artifact = artifactFrom(project, i);
-              const collected = progress.collected.includes(artifact.id);
-              return (
-                <button
-                  key={project.slug}
-                  type="button"
-                  aria-label={`Inspect ${project.title} case file`}
-                  onClick={() => worldActions.openPanel(caseFileFor(project, i, artifact.rarity))}
-                  className="panel flex min-h-[5.25rem] w-48 shrink-0 flex-col items-start justify-center gap-1 rounded-xl px-3.5 py-2.5 text-left transition hover:-translate-y-0.5"
-                  style={{ borderColor: `${artifact.accent}66` }}
-                >
-                  <span className="font-mono text-[0.55rem] tracking-[0.16em] uppercase" style={{ color: artifact.accent }}>
-                    {artifact.reference} · {artifact.classLabel}
-                  </span>
-                  <span className="line-clamp-1 text-sm font-medium text-ink">{project.title}</span>
-                  <span className="font-mono text-[0.5rem] tracking-[0.14em] text-faint uppercase">
-                    {collected ? "Collected" : `${artifact.rarity} · inspect`}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-        ) : null}
       </div>
 
       <EntrancePrompt
