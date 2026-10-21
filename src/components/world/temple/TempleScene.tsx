@@ -8,7 +8,6 @@ import { SceneScope } from "@/components/world/SceneScope";
 import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
-import { RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import {
   CarvedReliefs,
@@ -125,11 +124,8 @@ export function TempleScene() {
         <pointLight position={[0, 2, 1.2]} intensity={palette.isLight ? 3 : 6} distance={9} decay={2} color={ACCENT} />
 
         {/* ---------- Interactive objects (interior) ---------- */}
-        {/* Consecration light rising from the identity dais */}
-        <GroundShadow position={[0, 0.02, -4.2]} size={1.5} opacity={0.3} />
-        <RiseBeam position={[0, 0.9, -4.2]} color={ACCENT} radius={0.6} height={2.6} opacity={0.09} speed={0.85} />
-
         {/* Identity Crystal — central dais */}
+        <GroundShadow position={[0, 0.02, -4.2]} size={1.5} opacity={0.3} />
         <Hotspot3D
           position={[0, 1.5, -4.2]}
           radius={0.85}

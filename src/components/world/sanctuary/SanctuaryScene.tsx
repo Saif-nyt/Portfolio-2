@@ -58,18 +58,17 @@ function DataTablet({
           <boxGeometry args={[0.9, 1.2, 0.06]} />
           <meshStandardMaterial color={palette.metal} roughness={0.7} metalness={0.1} />
         </mesh>
-        {/* Glowing screen face */}
+        {/* Screen face */}
         <mesh position={[0, 0, 0.06]}>
           <planeGeometry args={[0.78, 1.05]} />
           <meshStandardMaterial
             color={palette.plinth}
             emissive={glow}
-            emissiveIntensity={0.9 * palette.glow}
-            toneMapped={false}
+            emissiveIntensity={0.5 * palette.glow}
+            roughness={0.5}
           />
         </mesh>
       </Floater>
-      <pointLight position={[0, 0.2, 0.4]} color={accent} intensity={2.2} distance={3.5} decay={2} />
     </group>
   );
 }

@@ -267,7 +267,7 @@ function MapPedestal() {
       </mesh>
       <mesh position={[0, 1.1, 0]}>
         <cylinderGeometry args={[0.55, 0.55, 0.1, 8]} />
-        <meshStandardMaterial color={palette.plinth} emissive={palette.accent(ACCENT)} emissiveIntensity={1 * palette.glow} toneMapped={false} />
+        <meshStandardMaterial color={palette.plinth} emissive={palette.accent(ACCENT)} emissiveIntensity={0.45 * palette.glow} roughness={0.5} />
       </mesh>
     </group>
   );
@@ -287,7 +287,7 @@ function GlowCrystals({
       {[0, 1, 2].map((i) => (
         <mesh key={i} position={[i * 0.3 - 0.3, 0.3 + i * 0.12, i * 0.15 - 0.15]} rotation={[0.2 * i, i, 0.1]}>
           <octahedronGeometry args={[0.18 - i * 0.03, 0]} />
-          <meshStandardMaterial color={mixHex(palette.stoneDark, color, 0.35)} emissive={palette.accent(color)} emissiveIntensity={1.8 * palette.glow} toneMapped={false} />
+          <meshStandardMaterial color={mixHex(palette.stoneDark, color, 0.35)} emissive={palette.accent(color)} emissiveIntensity={0.55 * palette.glow} roughness={0.35} />
         </mesh>
       ))}
     </group>

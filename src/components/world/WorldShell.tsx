@@ -104,7 +104,7 @@ function WorldHint({ accent }: { accent: string }) {
     >
       <Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accent }} aria-hidden="true" />
       <p className="text-xs leading-relaxed text-dim">
-        Select the glowing artifacts to explore. Use the world map to travel between locations.
+        Select the artifacts to explore. Use the world map to travel between locations.
       </p>
       <button
         type="button"

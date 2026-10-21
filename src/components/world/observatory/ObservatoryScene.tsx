@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -16,6 +16,7 @@ import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/componen
 import { worldActions } from "@/lib/world/store";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
+import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
 
 const ACCENT = "#b39dff";
 const GROWTH_POSITIONS: Array<[number, number]> = [
@@ -272,16 +273,38 @@ function SkillNodeMesh({
   node: SkillNode;
   highlighted: boolean;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Group>(null);
   const shellRef = useRef<THREE.Mesh>(null);
   const palette = useSceneTheme();
   const glow = palette.accent(node.accent);
+  // Crisp silhouette rim instead of a blown-out emissive: the node reads
+  // luminous without washing into a blob at any distance.
+  const nodeGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: palette.metal,
+        emissive: glow,
+        emissiveIntensity: 0.5,
+        rimStrength: 0.55,
+        rimPower: 3.3,
+        roughness: 0.3,
+        metalness: 0.25,
+      }),
+    [palette.metal, glow],
+  );
+  useEffect(() => () => nodeGlow.material.dispose(), [nodeGlow]);
+  const highlightMix = useRef(0);
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
+    const target = highlighted ? 1 : 0;
+    highlightMix.current = glowDamp(highlightMix.current, target, delta, 10);
+    const mix = highlightMix.current;
     if (ref.current) {
       ref.current.position.y = Math.sin(t * 0.8 + node.position[0]) * 0.08;
-      const material = ref.current.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = (highlighted ? 2.8 : 1.5 + Math.sin(t * 2 + node.position[0]) * 0.3) * palette.glow;
+      nodeGlow.setGlow(
+        (0.5 + mix * 0.45 + Math.sin(t * 2 + node.position[0]) * 0.08) * palette.glow,
+        (0.55 + mix * 0.4) * palette.glow,
+      );
     }
     if (shellRef.current) {
       shellRef.current.rotation.y += delta * 0.4;
@@ -292,17 +315,11 @@ function SkillNodeMesh({
   return (
     <group position={node.position}>
       {/* Solid relic core */}
-      <mesh ref={ref}>
-        <icosahedronGeometry args={[0.24, 1]} />
-        <meshStandardMaterial
-          color={palette.metal}
-          emissive={glow}
-          emissiveIntensity={1.5 * palette.glow}
-          roughness={0.3}
-          metalness={0.25}
-          toneMapped={false}
-        />
-      </mesh>
+      <group ref={ref}>
+        <mesh material={nodeGlow.material}>
+          <icosahedronGeometry args={[0.24, 1]} />
+        </mesh>
+      </group>
       {/* Faceted containment shell */}
       <mesh ref={shellRef}>
         <icosahedronGeometry args={[0.36, 0]} />
@@ -310,8 +327,7 @@ function SkillNodeMesh({
           color={glow}
           wireframe
           transparent
-          opacity={palette.isLight ? 0.55 : 0.35}
-          toneMapped={false}
+          opacity={palette.isLight ? 0.45 : 0.3}
         />
       </mesh>
     </group>

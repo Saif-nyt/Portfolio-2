@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
@@ -9,11 +9,12 @@ import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
-import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
+import { Floater, OrbitRing } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
+import { createRimGlowMaterial } from "@/lib/world/crisp-glow";
 import { SITE } from "@/lib/site";
 
 const ACCENT = "#ff8fb3";
@@ -41,6 +42,24 @@ function CommPillar({
   accent: string;
 }) {
   const palette = useSceneTheme();
+  const glow = palette.accent(accent);
+  // Crisp Fresnel rim instead of the old beam/point-light cloud: the crystal
+  // reads luminous at its silhouette while the facets stay sharp.
+  const crystalGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: palette.metal,
+        emissive: glow,
+        emissiveIntensity: 0.5 * palette.glow,
+        rimStrength: 0.55 * palette.glow,
+        rimPower: 3.3,
+        roughness: 0.3,
+        metalness: 0.25,
+        flatShading: true,
+      }),
+    [palette.metal, glow, palette.glow],
+  );
+  useEffect(() => () => crystalGlow.material.dispose(), [crystalGlow]);
   return (
     <group position={position}>
       <mesh position={[0, 0.9, 0]} castShadow receiveShadow>
@@ -48,32 +67,19 @@ function CommPillar({
         <meshStandardMaterial color={palette.stone} roughness={0.85} flatShading />
       </mesh>
       <Floater amplitude={0.06} speed={0.9} spin={0.5}>
-        <mesh position={[0, 2, 0]}>
+        <mesh position={[0, 2, 0]} material={crystalGlow.material}>
           <icosahedronGeometry args={[0.32, 0]} />
-          <meshStandardMaterial
-            color={palette.metal}
-            emissive={palette.accent(accent)}
-            emissiveIntensity={1.6 * palette.glow}
-            roughness={0.3}
-            metalness={0.25}
-            flatShading
-            toneMapped={false}
-          />
         </mesh>
       </Floater>
-      {/* Signal beam and orbiting transmission ring */}
-      <RiseBeam position={[0, 1.1, 0]} color={accent} radius={0.42} height={2.4} opacity={0.09} speed={1.3} />
-      <OrbitRing position={[0, 2, 0]} radius={0.52} color={accent} speed={0.7} tilt={Math.PI / 2.6} opacity={0.6} />
-      <pointLight position={[0, 2.2, 0]} color={accent} intensity={4} distance={5} decay={2} />
       {/* Base ring */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.55, 0.75, 24]} />
-        <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(accent)} emissiveIntensity={0.6} side={2} />
+        <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(accent)} emissiveIntensity={0.3} side={2} />
       </mesh>
       {/* Decorative label bar */}
       <mesh position={[0, 1.45, 0.36]}>
         <planeGeometry args={[0.5, 0.08]} />
-        <meshStandardMaterial color={palette.accent(accent)} emissive={palette.accent(accent)} emissiveIntensity={1.4 * palette.glow} toneMapped={false} />
+        <meshStandardMaterial color={palette.accent(accent)} emissive={palette.accent(accent)} emissiveIntensity={0.55 * palette.glow} />
       </mesh>
     </group>
   );

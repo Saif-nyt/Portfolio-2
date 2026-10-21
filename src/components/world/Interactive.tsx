@@ -15,6 +15,7 @@ import { useSceneTheme } from "@/lib/world/scene-theme";
 import { entrancePullScale } from "@/lib/world/viewport";
 import { getDotTexture } from "@/components/world/arrival/fx-textures";
 import { requestWorldFrame } from "@/lib/world/render-loop";
+import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
 
 interface Hotspot3DProps {
   position: [number, number, number];
@@ -29,12 +30,18 @@ interface Hotspot3DProps {
   pulse?: number;
   /** Keep the hit target while hiding the default crystal and light. */
   showIndicator?: boolean;
+  /** Fires on pointer enter/exit even when the indicator is hidden, so a
+   *  parent artifact (e.g. a Vault pedestal) can glow on hover. */
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 /**
- * A clickable 3D hotspot: glowing ring + orb with a generous invisible hit
- * area. Opens the shared holographic panel on click. Keyboard parity is
- * provided by the DOM nav strip and world map.
+ * A clickable 3D hotspot: a crisp ring + crystal indicator with a generous
+ * invisible hit area. The crystal glow is a tightly-contained Fresnel rim
+ * (see `crisp-glow`) — luminous at the silhouette, never a hazy halo. Hover
+ * and selection brighten the glow with damped easing, and deselection eases
+ * smoothly back to the idle level. Opens the shared holographic panel on
+ * click; keyboard parity is provided by the DOM nav strip and world map.
  */
 export function Hotspot3D({
   position,
@@ -45,60 +52,123 @@ export function Hotspot3D({
   disabled = false,
   pulse = 1,
   showIndicator = true,
+  onHoverChange,
 }: Hotspot3DProps) {
   const ringRef = useRef<THREE.Mesh>(null);
   const ring2Ref = useRef<THREE.Mesh>(null);
   const orbRef = useRef<THREE.Group>(null);
-  const coreRef = useRef<THREE.Mesh>(null);
-  const ringMatRef = useRef<THREE.MeshStandardMaterial>(null);
-  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
-  const haloMatRef = useRef<THREE.SpriteMaterial>(null);
   // Hover is a ref, not state: crossing nine hotspots must not re-render the
-  // scene tree. Materials are updated directly and the loop picks up the rest.
+  // scene tree. The damped mix below eases materials toward the target so
+  // brightness never snaps or flickers.
   const hoveredRef = useRef(false);
+  const hoverMixRef = useRef(0);
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme();
   const shadowTex = useMemo(() => getDotTexture(), []);
   // Stable per-instance phase so a row of hotspots breathes out of sync.
   const phase = useMemo(() => position[0] * 1.7 + position[2] * 0.9, [position]);
+  const orbAccent = palette.accent(accent);
 
-  useFrame(({ clock }) => {
-    if (reduced || !showIndicator) return;
-    const hovered = hoveredRef.current;
+  const ringGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: orbAccent,
+        emissive: orbAccent,
+        emissiveIntensity: 0.6,
+        rimStrength: 0.25,
+        rimPower: 2.6,
+        roughness: 0.4,
+        metalness: 0.1,
+      }),
+    [orbAccent],
+  );
+  const crystalGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: palette.metal,
+        emissive: orbAccent,
+        emissiveIntensity: 0.25,
+        rimStrength: 0.55,
+        rimPower: 3.4,
+        roughness: 0.2,
+        metalness: 0.35,
+        flatShading: true,
+      }),
+    [palette.metal, orbAccent],
+  );
+  const coreGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: palette.plinth,
+        emissive: orbAccent,
+        emissiveIntensity: 0.55,
+        rimStrength: 0.3,
+        rimPower: 2.8,
+        roughness: 0.25,
+        metalness: 0.2,
+      }),
+    [palette.plinth, orbAccent],
+  );
+  const ring2Mat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: orbAccent,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+      }),
+    [orbAccent],
+  );
+
+  // Imperative materials are not auto-disposed by R3F on unmount.
+  useEffect(
+    () => () => {
+      ringGlow.material.dispose();
+      crystalGlow.material.dispose();
+      coreGlow.material.dispose();
+    },
+    [ringGlow, crystalGlow, coreGlow],
+  );
+  useEffect(() => () => ring2Mat.dispose(), [ring2Mat]);
+
+  useFrame(({ clock }, delta) => {
+    if (!showIndicator) return;
+    const target = hoveredRef.current ? 1 : 0;
+    // Reduced motion snaps; otherwise ease in/out frame-rate independently.
+    hoverMixRef.current = reduced ? target : glowDamp(hoverMixRef.current, target, delta, 14);
+    const mix = hoverMixRef.current;
+    const glowScale = palette.glow;
     const t = clock.elapsedTime * pulse + phase;
-    if (ringRef.current) {
-      ringRef.current.rotation.z = t * 0.5;
-      const s = 1 + Math.sin(t * 2) * (hovered ? 0.09 : 0.04);
-      ringRef.current.scale.setScalar(s);
-    }
-    if (ring2Ref.current) {
-      ring2Ref.current.rotation.z = -t * 0.36;
-    }
-    if (orbRef.current) {
-      orbRef.current.position.y = 0.15 + Math.sin(t * 1.4) * 0.08;
-      orbRef.current.rotation.y += 0.003 * pulse;
-    }
-    if (coreRef.current) {
-      const material = coreRef.current.material as THREE.MeshStandardMaterial;
-      material.emissiveIntensity = ((hovered ? 2.4 : 1.5) + Math.sin(t * 3) * 0.3) * palette.glow;
-    }
-  });
 
-  const setHover = (hovered: boolean) => {
-    hoveredRef.current = hovered;
-    if (ringMatRef.current) {
-      ringMatRef.current.emissiveIntensity = (hovered ? 2.4 : 1.4) * palette.glow;
+    if (!reduced) {
+      if (ringRef.current) {
+        ringRef.current.rotation.z = t * 0.5;
+        ringRef.current.scale.setScalar(1 + Math.sin(t * 2) * (0.025 + mix * 0.03));
+      }
+      if (ring2Ref.current) {
+        ring2Ref.current.rotation.z = -t * 0.36;
+      }
+      if (orbRef.current) {
+        orbRef.current.position.y = 0.15 + Math.sin(t * 1.4) * 0.08;
+        orbRef.current.rotation.y += 0.003 * pulse;
+      }
     }
-    if (ring2MatRef.current) ring2MatRef.current.opacity = hovered ? 0.85 : 0.5;
-    if (haloMatRef.current) {
-      haloMatRef.current.opacity = (hovered ? 0.34 : 0.22) * palette.glow;
+
+    // Idle = subtle; hover/selection = brighter and more defined (stronger
+    // rim). Nothing scales outward, so the glow never expands into haze.
+    ringGlow.setGlow((0.6 + mix * 0.45) * glowScale, (0.25 + mix * 0.2) * glowScale);
+    crystalGlow.setGlow((0.25 + mix * 0.25) * glowScale, (0.55 + mix * 0.4) * glowScale);
+    coreGlow.setGlow(
+      (0.55 + mix * 0.5 + (reduced ? 0 : Math.sin(t * 3) * 0.06)) * glowScale,
+      (0.3 + mix * 0.25) * glowScale,
+    );
+    if (ring2Ref.current) {
+      (ring2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0.45 + mix * 0.35;
     }
-    if (coreRef.current) {
-      (coreRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
-        (hovered ? 2.4 : 1.5) * palette.glow;
-    }
-    requestWorldFrame();
-  };
+
+    // Keep the demand loop alive exactly while a transition is settling.
+    if (Math.abs(target - mix) > 1e-3) requestWorldFrame();
+  });
 
   const onClick = (event: ThreeEvent<MouseEvent>) => {
     if (disabled) return;
@@ -109,16 +179,18 @@ export function Hotspot3D({
   const onOver = (event: ThreeEvent<PointerEvent>) => {
     if (disabled) return;
     event.stopPropagation();
-    if (showIndicator) setHover(true);
+    hoveredRef.current = true;
+    onHoverChange?.(true);
     document.body.style.cursor = "pointer";
+    requestWorldFrame();
   };
 
   const onOut = () => {
-    if (showIndicator) setHover(false);
+    hoveredRef.current = false;
+    onHoverChange?.(false);
     document.body.style.cursor = "";
+    requestWorldFrame();
   };
-
-  const orbAccent = palette.accent(accent);
 
   return (
     <group position={position}>
@@ -142,71 +214,24 @@ export function Hotspot3D({
           </mesh>
 
           {/* Ground ring — the artifact's dais marking. */}
-          <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
+          <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]} material={ringGlow.material}>
             <torusGeometry args={[radius * 0.85, 0.035, 8, 36]} />
-            <meshStandardMaterial
-              ref={ringMatRef}
-              color={orbAccent}
-              emissive={orbAccent}
-              emissiveIntensity={1.4 * palette.glow}
-              toneMapped={false}
-            />
           </mesh>
 
           {/* Tilted containment ring for depth. */}
-          <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]}>
+          <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]} material={ring2Mat}>
             <torusGeometry args={[radius * 0.62, 0.018, 6, 28]} />
-            <meshBasicMaterial
-              ref={ring2MatRef}
-              color={orbAccent}
-              transparent
-              opacity={0.5}
-              depthWrite={false}
-              toneMapped={false}
-            />
           </mesh>
 
           {/* Faceted crystal body floating over an emissive core. */}
           <group ref={orbRef}>
-            <mesh>
+            <mesh material={crystalGlow.material}>
               <octahedronGeometry args={[radius * 0.36, 0]} />
-              <meshStandardMaterial
-                color={palette.metal}
-                emissive={orbAccent}
-                emissiveIntensity={0.35 * palette.glow}
-                roughness={0.2}
-                metalness={0.35}
-                flatShading
-                toneMapped={false}
-              />
             </mesh>
-            <mesh ref={coreRef} scale={0.55}>
+            <mesh scale={0.55} material={coreGlow.material}>
               <icosahedronGeometry args={[radius * 0.36, 1]} />
-              <meshStandardMaterial
-                color={palette.plinth}
-                emissive={orbAccent}
-                emissiveIntensity={1.5 * palette.glow}
-                roughness={0.25}
-                metalness={0.2}
-                toneMapped={false}
-              />
             </mesh>
           </group>
-
-          {/* Additive halo instead of a real point light: same presence, no
-              per-fragment light cost across the whole scene. */}
-          <sprite position={[0, 0.18, 0]} scale={[radius * 3.4, radius * 3.4, 1]}>
-            <spriteMaterial
-              ref={haloMatRef}
-              map={shadowTex}
-              color={orbAccent}
-              transparent
-              opacity={0.22 * palette.glow}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-              toneMapped={false}
-            />
-          </sprite>
         </>
       ) : null}
       {children}

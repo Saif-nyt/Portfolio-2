@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -17,6 +17,7 @@ import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/componen
 import { worldActions } from "@/lib/world/store";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
+import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
 
 const ACCENT = "#ffb36b";
 const GROWTH_POSITIONS: Array<[number, number]> = [
@@ -136,13 +137,34 @@ function ForgeStation({
   station: Station;
   active: boolean;
 }) {
-  const glowRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Group>(null);
   const palette = useSceneTheme();
-  useFrame(({ clock }) => {
-    if (!glowRef.current) return;
+  // Crisp silhouette rim on the core gem: luminous but sharply contained —
+  // no point-light cloud, no blown-out emissive blob.
+  const coreGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: palette.plinth,
+        emissive: palette.accent(station.accent),
+        emissiveIntensity: 0.55,
+        rimStrength: 0.6,
+        rimPower: 3.2,
+        roughness: 0.3,
+      }),
+    [palette, station.accent],
+  );
+  useEffect(() => () => coreGlow.material.dispose(), [coreGlow]);
+  const activeMix = useRef(0);
+  useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
-    const material = glowRef.current.material as THREE.MeshStandardMaterial;
-    material.emissiveIntensity = (active ? 2.4 : 1 + Math.sin(t * 1.8 + station.position[0]) * 0.3) * palette.glow;
+    const target = active ? 1 : 0;
+    activeMix.current = glowDamp(activeMix.current, target, delta, 10);
+    const mix = activeMix.current;
+    coreGlow.setGlow(
+      (0.55 + mix * 0.4 + Math.sin(t * 1.8 + station.position[0]) * 0.06) * palette.glow,
+      (0.6 + mix * 0.35) * palette.glow,
+    );
+    if (glowRef.current) glowRef.current.rotation.y = t * 0.4;
   });
 
   return (
@@ -164,18 +186,12 @@ function ForgeStation({
           <meshStandardMaterial color={palette.stoneDark} roughness={0.9} />
         </mesh>
       ))}
-      {/* Glowing core */}
-      <mesh ref={glowRef} position={[0, 1, 0]}>
-        <octahedronGeometry args={[0.28, 0]} />
-        <meshStandardMaterial
-          color={palette.plinth}
-          emissive={palette.accent(station.accent)}
-          emissiveIntensity={1}
-          roughness={0.3}
-          toneMapped={false}
-        />
-      </mesh>
-      <pointLight position={[0, 1.2, 0]} color={station.accent} intensity={active ? 5 : 3} distance={4.5} decay={2} />
+      {/* Core gem */}
+      <group ref={glowRef} position={[0, 1, 0]}>
+        <mesh material={coreGlow.material}>
+          <octahedronGeometry args={[0.28, 0]} />
+        </mesh>
+      </group>
     </group>
   );
 }

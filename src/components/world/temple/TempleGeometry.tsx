@@ -518,7 +518,7 @@ export function HoloRing({
   return (
     <mesh ref={ref} position={position}>
       <torusGeometry args={[radius, 0.03, 8, 40]} />
-      <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={2 * palette.glow} toneMapped={false} />
+      <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={0.6 * palette.glow} roughness={0.4} />
     </mesh>
   );
 }
@@ -562,7 +562,7 @@ export function GlyphOrbit({
       {shards.map((shard) => (
         <mesh key={shard.key} position={[shard.x, shard.y, shard.z]} rotation={[shard.key, shard.key * 0.5, 0]}>
           <octahedronGeometry args={[shard.scale, 0]} />
-          <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={1.8 * palette.glow} toneMapped={false} />
+          <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={0.5 * palette.glow} roughness={0.35} />
         </mesh>
       ))}
     </group>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
@@ -10,16 +11,18 @@ import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
-import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
+import { Floater } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useProjectsResource, type ProjectSummary } from "@/lib/world/content-hooks";
 import { artifactFrom } from "@/lib/world/artifacts";
 import { progressActions, useProgress } from "@/lib/world/progress";
 import { worldActions } from "@/lib/world/store";
-import { useMediaQuery } from "@/lib/hooks";
+import { useMediaQuery, usePrefersReducedMotion } from "@/lib/hooks";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { mixHex } from "@/lib/world/scene-theme";
+import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
 
 const ACCENT = "#6bffd0";
@@ -32,23 +35,92 @@ const GROWTH_POSITIONS: Array<[number, number]> = [
 
 type PoseId = "overview" | "close" | "left" | "right";
 
-/** A floating artifact pedestal with a rotating crystal above it. */
+/**
+ * A floating artifact pedestal with a rotating crystal above it. The crystal
+ * glows through a tightly-contained Fresnel rim (see `crisp-glow`) — luminous
+ * at the silhouette, crisp at any camera distance, never a hazy halo. Hover
+ * (via the shared `hoveredRef` written by the sibling Hotspot3D) eases the
+ * glow brighter; leaving eases it smoothly back to idle.
+ */
 function Artifact({
   position,
   accent,
   index,
   collected = false,
   shape = "artifact",
+  hoveredRef,
 }: {
   position: [number, number, number];
   accent: string;
   index: number;
   collected?: boolean;
   shape?: "shard" | "artifact" | "relic";
+  /** Index of the currently-hovered artifact, or -1. Shared ref: no re-renders. */
+  hoveredRef?: { current: number };
 }) {
   const palette = useSceneTheme();
+  const reduced = usePrefersReducedMotion();
   const glow = palette.accent(accent);
   const crystalColor = mixHex(palette.metal, glow, collected ? 0.35 : 0.2);
+  const shapeRoughness = shape === "relic" ? 0.22 : shape === "shard" ? 0.25 : 0.24;
+  const shapeMetalness = shape === "relic" ? 0.35 : shape === "shard" ? 0.2 : 0.3;
+
+  const crystalGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: crystalColor,
+        emissive: glow,
+        emissiveIntensity: 0.55,
+        rimStrength: 0.55,
+        rimPower: 3.2,
+        roughness: shapeRoughness,
+        metalness: shapeMetalness,
+        flatShading: true,
+      }),
+    [crystalColor, glow, shapeRoughness, shapeMetalness],
+  );
+  const bandGlow = useMemo(
+    () =>
+      createRimGlowMaterial({
+        color: glow,
+        emissive: glow,
+        emissiveIntensity: 0.45,
+        rimStrength: 0.3,
+        rimPower: 2.6,
+        roughness: 0.4,
+        metalness: 0.1,
+      }),
+    [glow],
+  );
+
+  useEffect(
+    () => () => {
+      crystalGlow.material.dispose();
+      bandGlow.material.dispose();
+    },
+    [crystalGlow, bandGlow],
+  );
+
+  const hoverMix = useRef(0);
+
+  useFrame(({ clock }, delta) => {
+    const target = hoveredRef?.current === index ? 1 : 0;
+    hoverMix.current = reduced ? target : glowDamp(hoverMix.current, target, delta, 12);
+    const mix = hoverMix.current;
+    const collectedBoost = collected ? 0.12 : 0;
+    const t = clock.elapsedTime;
+
+    // Idle: subtle refined glow. Hover: brighter body + a more defined rim
+    // (stronger, not wider). Collected artifacts keep a permanent faint lift.
+    crystalGlow.setGlow(
+      (0.55 + collectedBoost + mix * 0.45 + (reduced ? 0 : Math.sin(t * 1.5 + index) * 0.03)) * palette.glow,
+      (0.55 + mix * 0.4) * palette.glow,
+    );
+    bandGlow.setGlow((0.45 + mix * 0.35) * palette.glow, (0.3 + mix * 0.2) * palette.glow);
+
+    if (Math.abs(target - mix) > 1e-3) requestWorldFrame();
+  });
+
   return (
     <group position={position}>
       {/* Stacked stone plinth with a carved band */}
@@ -60,68 +132,24 @@ function Artifact({
         <cylinderGeometry args={[0.46, 0.58, 0.16, 8]} />
         <meshStandardMaterial color={palette.stone} roughness={0.85} flatShading />
       </mesh>
-      <mesh position={[0, 0.4, 0]}>
+      <mesh position={[0, 0.4, 0]} material={bandGlow.material}>
         <torusGeometry args={[0.42, 0.03, 6, 16]} />
-        <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={0.9 * palette.glow} toneMapped={false} />
       </mesh>
-      {/* Containment beam rising from the pedestal */}
-      <RiseBeam position={[0, 0.4, 0]} color={accent} radius={0.5} height={2.0} opacity={0.08} speed={1 + index * 0.12} />
-      {/* Orbiting scan ring around the crystal — brighter once collected */}
-      <OrbitRing
-        position={[0, 0.95, 0]}
-        radius={0.64}
-        color={accent}
-        speed={0.5 + index * 0.06}
-        tilt={Math.PI / 2.4}
-        opacity={collected ? 0.85 : 0.5}
-      />
       <Floater amplitude={0.09} speed={0.7} phase={index * 1.3} spin={0.45 + index * 0.08}>
         <group position={[0, 0.95, 0]} rotation={[0, index * 0.7, 0.2]}>
           {shape === "relic" ? (
-            <mesh>
+            <mesh material={crystalGlow.material}>
               <icosahedronGeometry args={[0.42, 0]} />
-              <meshStandardMaterial
-                color={crystalColor}
-                emissive={glow}
-                emissiveIntensity={(collected ? 1.9 : 1.3) * palette.glow}
-                roughness={0.22}
-                metalness={0.35}
-                flatShading
-                toneMapped={false}
-              />
             </mesh>
           ) : shape === "shard" ? (
-            <mesh>
+            <mesh material={crystalGlow.material}>
               <octahedronGeometry args={[0.4, 0]} />
-              <meshStandardMaterial
-                color={crystalColor}
-                emissive={glow}
-                emissiveIntensity={(collected ? 2.2 : 1.6) * palette.glow}
-                roughness={0.25}
-                metalness={0.2}
-                flatShading
-                toneMapped={false}
-              />
             </mesh>
           ) : (
-            <mesh>
+            <mesh material={crystalGlow.material}>
               <dodecahedronGeometry args={[0.38, 0]} />
-              <meshStandardMaterial
-                color={crystalColor}
-                emissive={glow}
-                emissiveIntensity={(collected ? 2.0 : 1.5) * palette.glow}
-                roughness={0.24}
-                metalness={0.3}
-                flatShading
-                toneMapped={false}
-              />
             </mesh>
           )}
-          {/* Inner light core */}
-          <mesh scale={0.45}>
-            <icosahedronGeometry args={[0.4, 1]} />
-            <meshStandardMaterial color={glow} emissive={glow} emissiveIntensity={1.4 * palette.glow} toneMapped={false} />
-          </mesh>
         </group>
       </Floater>
     </group>
@@ -179,6 +207,10 @@ export function VaultScene() {
   const { status, data: projects, reload } = useProjectsResource();
   const progress = useProgress();
   const [pose, setPose] = useState<PoseId>("overview");
+  // Index of the artifact under the pointer, or -1. A ref (not state): hover
+  // crosses must never re-render the scene tree — each Artifact's own useFrame
+  // reads this and eases its glow materials toward the right level.
+  const hoveredArtifact = useRef(-1);
   // The camera only crosses the threshold once the leaves have parted (or the
   // visitor skips the wait), so it can never be stranded inside the doorway.
   const doorway = useDoorwayEntry();
@@ -315,7 +347,14 @@ export function VaultScene() {
           const pos = positions[i];
           return (
             <group key={project.slug}>
-              <Artifact position={pos} accent={accent} index={i} collected={collected} shape={artifact.rarity} />
+              <Artifact
+                position={pos}
+                accent={accent}
+                index={i}
+                collected={collected}
+                shape={artifact.rarity}
+                hoveredRef={hoveredArtifact}
+              />
               <Hotspot3D
                 position={[pos[0], 1.3, pos[2]]}
                 // Fingers are less precise than a cursor; portrait framing also
@@ -324,6 +363,15 @@ export function VaultScene() {
                 accent={accent}
                 object={caseFileFor(project, i, artifact.rarity)}
                 showIndicator={false}
+                onHoverChange={(hovered) => {
+                  if (hovered) {
+                    hoveredArtifact.current = i;
+                  } else if (hoveredArtifact.current === i) {
+                    // Only clear our own slot: a fast move to the next
+                    // artifact may deliver "out" after the next "over".
+                    hoveredArtifact.current = -1;
+                  }
+                }}
               />
             </group>
           );
