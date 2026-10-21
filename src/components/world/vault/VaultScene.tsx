@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
@@ -17,6 +17,7 @@ import { artifactFrom } from "@/lib/world/artifacts";
 import { progressActions, useProgress } from "@/lib/world/progress";
 import { worldActions } from "@/lib/world/store";
 import { useMediaQuery } from "@/lib/hooks";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { mixHex } from "@/lib/world/scene-theme";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
@@ -178,9 +179,13 @@ export function VaultScene() {
   const { status, data: projects, reload } = useProjectsResource();
   const progress = useProgress();
   const [pose, setPose] = useState<PoseId>("overview");
-  const [inside, setInside] = useState(false);
-  // Portrait phones can't fit the wide desktop arc — tighten it and pull the
-  // camera back so every artifact stays on screen.
+  // The camera only crosses the threshold once the leaves have parted (or the
+  // visitor skips the wait), so it can never be stranded inside the doorway.
+  const doorway = useDoorwayEntry();
+  const { entered: inside } = doorway;
+  // Portrait phones show a much narrower slice of the world: the artifacts
+  // open into a true half circle and the camera sits deeper in the room so
+  // nothing overlaps.
   const portrait = useMediaQuery("(max-aspect-ratio: 1/1)");
   const palette = useSceneTheme({ bg: "#dbddcd", fog: "#e5e7d8" });
 
@@ -189,10 +194,14 @@ export function VaultScene() {
 
   const positions = useMemo<[number, number, number][]>(() => {
     if (count === 0) return [];
-    const radius = portrait ? 2.4 : 4.2;
-    const spread = portrait ? Math.PI * 0.6 : Math.PI * 0.9;
-    const depth = portrait ? 1.2 : 2.2;
-    const baseZ = portrait ? -0.2 : -0.5;
+    // The plinths are 1.56 wide, so the centre-to-centre gap has to stay
+    // above ~1.9 or the pedestals interpenetrate. The desktop arc keeps its
+    // authored sweep; the portrait arc widens to a half circle and sits
+    // further back from the doorway to buy that room.
+    const radius = portrait ? 3.1 : 4.2;
+    const spread = portrait ? Math.PI : Math.PI * 0.9;
+    const depth = portrait ? 3.1 : 2.2;
+    const baseZ = portrait ? -1.0 : -0.5;
     return visible.map((_, i) => {
       const t = count === 1 ? 0.5 : i / (count - 1);
       const angle = (t - 0.5) * spread;
@@ -204,11 +213,11 @@ export function VaultScene() {
     () =>
       portrait
         ? {
-            entrance: { position: [0, 2.6, 18], lookAt: [0, 2.6, 13] },
-            overview: { position: [0, 2.4, 15], lookAt: [0, 1.1, -1] },
-            close: { position: [0, 2.0, 11.5], lookAt: [0, 1.1, -1] },
-            left: { position: [-2.6, 2.1, 12], lookAt: [-2.2, 1.1, -1] },
-            right: { position: [2.6, 2.1, 12], lookAt: [2.2, 1.1, -1] },
+            entrance: { position: [0, 2.8, 17], lookAt: [0, 2.8, 13] },
+            overview: { position: [0, 3.0, 10], lookAt: [0, 1.1, -2] },
+            close: { position: [0, 2.2, 6.2], lookAt: [0, 1.15, -2.6] },
+            left: { position: [-3.2, 2.3, 7.4], lookAt: [-2.4, 1.1, -2.2] },
+            right: { position: [3.2, 2.3, 7.4], lookAt: [2.4, 1.1, -2.2] },
           }
         : {
             entrance: { position: [0, 2.8, 17], lookAt: [0, 2.8, 13] },
@@ -219,6 +228,19 @@ export function VaultScene() {
           },
     [portrait],
   );
+
+  // Every visit starts from the framed overview, and repeated taps on the
+  // Enter button are ignored while the door is already swinging.
+  const enterVault = useCallback(() => {
+    if (doorway.open) return;
+    setPose("overview");
+    doorway.begin();
+  }, [doorway]);
+
+  const exitVault = useCallback(() => {
+    doorway.exit();
+    setPose("overview");
+  }, [doorway]);
 
   const hasArtifacts = status === "ready" && count > 0;
   const caseFileFor = (project: ProjectSummary, index: number, rarity: "shard" | "artifact" | "relic") => ({
@@ -250,20 +272,29 @@ export function VaultScene() {
         cameraFov={44}
         background={palette.bg}
         fog={{ color: palette.fog, density: palette.fogDensity }}
-        animate={inside}
+        animate={doorway.open}
       >
         <LightRig fillColor={ACCENT} intensity={0.8} />
-        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSE_STATES} />
+        <CameraDirector
+          pose={inside ? (pose as string) : "entrance"}
+          poses={POSE_STATES}
+          baseFov={44}
+        />
         <DistantHorizon accent={ACCENT} scale={1.2} />
         <AmbientMotes color={palette.mote} radius={6.5} height={3.8} count={48} size={0.1} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the vault */}
-        <TempleEntrance position={[0, 0, 13]} accent={ACCENT} open={inside} />
+        <TempleEntrance
+          position={[0, 0, 13]}
+          accent={ACCENT}
+          open={doorway.open}
+          onOpened={doorway.opened}
+        />
 
-        {/* Vault floor */}
+        {/* Vault floor — sized to hold the widened portrait arc */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <circleGeometry args={[9, 48]} />
+          <circleGeometry args={[portrait ? 11.5 : 9, portrait ? 56 : 48]} />
           <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Central vault ring */}
@@ -287,7 +318,9 @@ export function VaultScene() {
               <Artifact position={pos} accent={accent} index={i} collected={collected} shape={artifact.rarity} />
               <Hotspot3D
                 position={[pos[0], 1.3, pos[2]]}
-                radius={0.8}
+                // Fingers are less precise than a cursor; portrait framing also
+                // puts the pedestals further from the camera.
+                radius={portrait ? 1.05 : 0.8}
                 accent={accent}
                 object={caseFileFor(project, i, artifact.rarity)}
                 showIndicator={false}
@@ -363,7 +396,13 @@ export function VaultScene() {
         ) : null}
       </div>
 
-      <EntrancePrompt label="the Vault" open={inside} onEnter={() => setInside(true)} />
+      <EntrancePrompt
+        label="the Vault"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterVault}
+        onSkip={doorway.skip}
+      />
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
@@ -391,7 +430,7 @@ export function VaultScene() {
           ) : null}
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={exitVault}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple

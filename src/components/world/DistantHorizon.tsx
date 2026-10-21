@@ -11,6 +11,8 @@ interface DistantHorizonProps {
   scale?: number;
   /** Render fewer silhouettes for weaker devices. */
   quality?: "high" | "low";
+  /** Disable the floating islands when the host scene supplies its own. */
+  floating?: boolean;
 }
 
 interface Silhouette {
@@ -41,44 +43,63 @@ function makeSilhouettes(
   });
 }
 
+function buildHorizon(scale: number, quality: "high" | "low") {
+  return {
+    far: makeSilhouettes(
+      quality === "high" ? 22 : 13,
+      13.7,
+      72 * scale,
+      104 * scale,
+      18 * scale,
+      38 * scale,
+    ),
+    near: makeSilhouettes(
+      quality === "high" ? 18 : 11,
+      71.3,
+      44 * scale,
+      68 * scale,
+      9 * scale,
+      22 * scale,
+    ),
+  };
+}
+
+export interface HorizonCollider {
+  x: number;
+  z: number;
+  r: number;
+}
+
+/** Collision footprints for the walkable Home frontier. */
+export function distantHorizonColliders(scale = 1, quality: "high" | "low" = "high"): HorizonCollider[] {
+  const { far, near } = buildHorizon(scale, quality);
+  return [...near, ...far].map((item) => ({
+    x: Math.cos(item.angle) * item.radius,
+    z: Math.sin(item.angle) * item.radius,
+    r: item.width * 0.48 + 0.5,
+  }));
+}
+
 /**
  * A cheap, static ring of layered ridges and floating rock islands. Each layer
  * is a single instanced mesh, so every destination gains believable distance
  * and scale without adding per-frame work or extra draw calls per peak.
  */
-export function DistantHorizon({ accent = "#63f5e7", scale = 1, quality = "high" }: DistantHorizonProps) {
+export function DistantHorizon({
+  accent = "#63f5e7",
+  scale = 1,
+  quality = "high",
+  floating: showFloating = true,
+}: DistantHorizonProps) {
   const palette = useSceneTheme();
   const farRef = useRef<THREE.InstancedMesh>(null);
   const nearRef = useRef<THREE.InstancedMesh>(null);
   const floatRef = useRef<THREE.InstancedMesh>(null);
 
-  const far = useMemo(
-    () =>
-      makeSilhouettes(
-        quality === "high" ? 22 : 13,
-        13.7,
-        72 * scale,
-        104 * scale,
-        18 * scale,
-        38 * scale,
-      ),
-    [quality, scale],
-  );
-  const near = useMemo(
-    () =>
-      makeSilhouettes(
-        quality === "high" ? 18 : 11,
-        71.3,
-        44 * scale,
-        68 * scale,
-        9 * scale,
-        22 * scale,
-      ),
-    [quality, scale],
-  );
+  const { far, near } = useMemo(() => buildHorizon(scale, quality), [quality, scale]);
   const floating = useMemo(
     () =>
-      Array.from({ length: quality === "high" ? 7 : 4 }, (_, i) => {
+      Array.from({ length: showFloating ? (quality === "high" ? 7 : 4) : 0 }, (_, i) => {
         const s = 121.9 + i * 6.3;
         return {
           angle: (i / 7) * Math.PI * 2 + hash01(s) * 0.5,
@@ -88,7 +109,7 @@ export function DistantHorizon({ accent = "#63f5e7", scale = 1, quality = "high"
           spin: hash01(s + 4.4) * Math.PI * 2,
         };
       }),
-    [quality, scale],
+    [quality, scale, showFloating],
   );
 
   useLayoutEffect(() => {
@@ -144,16 +165,18 @@ export function DistantHorizon({ accent = "#63f5e7", scale = 1, quality = "high"
         <coneGeometry args={[1, 1, 6, 1]} />
         <meshStandardMaterial color={nearColor} roughness={1} flatShading />
       </instancedMesh>
-      <instancedMesh ref={floatRef} args={[undefined, undefined, floating.length]} frustumCulled={false}>
-        <coneGeometry args={[1, 1, 6, 1]} />
-        <meshStandardMaterial
-          color={islandColor}
-          emissive={palette.accent(accent)}
-          emissiveIntensity={0.08 * palette.glow}
-          roughness={0.96}
-          flatShading
-        />
-      </instancedMesh>
+      {showFloating ? (
+        <instancedMesh ref={floatRef} args={[undefined, undefined, floating.length]} frustumCulled={false}>
+          <coneGeometry args={[1, 1, 6, 1]} />
+          <meshStandardMaterial
+            color={islandColor}
+            emissive={palette.accent(accent)}
+            emissiveIntensity={0.08 * palette.glow}
+            roughness={0.96}
+            flatShading
+          />
+        </instancedMesh>
+      ) : null}
     </group>
   );
 }

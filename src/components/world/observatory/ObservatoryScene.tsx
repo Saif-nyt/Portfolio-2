@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -14,6 +14,7 @@ import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#b39dff";
@@ -351,7 +352,19 @@ function ConnectionLines() {
  */
 export function ObservatoryScene() {
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
-  const [inside, setInside] = useState(false);
+  // Cross the threshold only once the leaves have cleared (or the visitor
+  // skips the wait) — no more camera-through-a-shutting-door strandings.
+  const doorway = useDoorwayEntry();
+  const { entered: inside } = doorway;
+  const enterObservatory = useCallback(() => {
+    if (doorway.open) return;
+    setPose("overview");
+    doorway.begin();
+  }, [doorway]);
+  const exitObservatory = useCallback(() => {
+    doorway.exit();
+    setPose("overview");
+  }, [doorway]);
   const palette = useSceneTheme({ bg: "#d8dcdb", fog: "#e4e6e3" });
 
   return (
@@ -364,13 +377,13 @@ export function ObservatoryScene() {
         animate
       >
         <LightRig fillColor={ACCENT} intensity={0.75} />
-        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} baseFov={44} />
         <DistantHorizon accent={ACCENT} scale={1} />
         <AmbientMotes color={palette.mote} radius={7} height={5.5} count={110} size={0.16} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the observatory */}
-        <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={inside} />
+        <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
 
         {/* Observatory floor: disc first, inlaid ring lifted a hair to avoid z-fighting */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -424,7 +437,13 @@ export function ObservatoryScene() {
         </p>
       </div>
 
-      <EntrancePrompt label="the Observatory" open={inside} onEnter={() => setInside(true)} />
+      <EntrancePrompt
+        label="the Observatory"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterObservatory}
+        onSkip={doorway.skip}
+      />
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
@@ -440,7 +459,7 @@ export function ObservatoryScene() {
           ))}
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={exitObservatory}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple

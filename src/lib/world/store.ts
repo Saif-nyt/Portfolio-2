@@ -35,6 +35,10 @@ interface WorldState {
   collectionOpen: boolean;
   /** Reduced-effort rendering tier for weaker devices. */
   quality: RenderQuality;
+  /** Free-walk mode is active in the Home world. */
+  walkMode: boolean;
+  /** Soft proximity label while walking (campfire, landmark…). */
+  nearby: string | null;
   /**
    * Codex to open only after arriving at `href`. Used by cross-world actions
    * such as Forge "Discuss" → Contact, where opening immediately would be
@@ -50,8 +54,18 @@ let state: WorldState = {
   codex: null,
   collectionOpen: false,
   quality: "high",
+  walkMode: false,
+  nearby: null,
   pendingCodex: null,
 };
+
+// Detect the tier once when the client module loads, before the first scene is
+// mounted, so a weak device never renders one high-quality frame first (and
+// never overwrites a later governor drop back to high).
+if (typeof window !== "undefined") {
+  const detected = detectQuality();
+  if (detected !== state.quality) state = { ...state, quality: detected };
+}
 
 const listeners = new Set<() => void>();
 
@@ -79,6 +93,8 @@ const SERVER_STATE: WorldState = {
   codex: null,
   collectionOpen: false,
   quality: "high",
+  walkMode: false,
+  nearby: null,
   pendingCodex: null,
 };
 
@@ -171,6 +187,28 @@ export const worldActions = {
     state = { ...state, quality };
     emit();
   },
+  /** Toggle free walking. Entering it dismisses any open overlay. */
+  setWalkMode(active: boolean) {
+    if (state.walkMode === active) return;
+    state = active
+      ? {
+          ...state,
+          walkMode: true,
+          nearby: null,
+          activeObject: null,
+          mapOpen: false,
+          codex: null,
+          collectionOpen: false,
+        }
+      : { ...state, walkMode: false, nearby: null };
+    emit();
+  },
+  /** Cheap, change-only status line for subtle proximity cues. */
+  setNearby(label: string | null) {
+    if (state.nearby === label) return;
+    state = { ...state, nearby: label };
+    emit();
+  },
 };
 
 /** SSR-safe subscription hook for the world shell. */
@@ -206,6 +244,42 @@ export function getMoveInput(): Readonly<MoveInput> {
 export function resetMoveInput(): void {
   moveInput.x = 0;
   moveInput.y = 0;
+}
+
+/** Dedicated virtual-joystick vector for walking; independent of orbit drag. */
+const walkInput: MoveInput = { x: 0, y: 0 };
+
+export function setWalkInput(x: number, y: number): void {
+  walkInput.x = x;
+  walkInput.y = y;
+}
+
+export function getWalkInput(): Readonly<MoveInput> {
+  return walkInput;
+}
+
+export function resetWalkInput(): void {
+  walkInput.x = 0;
+  walkInput.y = 0;
+}
+
+/**
+ * Accumulated pointer-look delta for walk mode. The render loop consumes and
+ * clears it every frame, so fast mouse movement is never dropped between
+ * frames and React never re-renders for camera input.
+ */
+const lookDelta = { x: 0, y: 0 };
+
+export function addLookInput(x: number, y: number): void {
+  lookDelta.x += x;
+  lookDelta.y += y;
+}
+
+export function consumeLookInput(): Readonly<{ x: number; y: number }> {
+  const value = { x: lookDelta.x, y: lookDelta.y };
+  lookDelta.x = 0;
+  lookDelta.y = 0;
+  return value;
 }
 
 /**

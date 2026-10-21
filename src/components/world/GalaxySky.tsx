@@ -19,7 +19,15 @@ interface GalaxySkyProps {
  * there is no gradient that reads as a painted ceiling. Stars are a separate
  * point cloud for crisp sub-pixel highlights; faint galactic structure and
  * atmospheric haze are procedural and cost one fragment shader pass.
+ *
+ * The star shell sits at STAR_RADIUS — beyond every piece of world geometry
+ * (the terrain tops out at ~310) but inside the sky sphere — so depth testing
+ * against the world silhouettes them against mountains instead of letting
+ * transparent sorting paint them over the ground.
  */
+const STAR_RADIUS = 430;
+/** `pointsMaterial` size for STAR_RADIUS, tuned to match the 260-radius look. */
+const STAR_SIZE = 2.23;
 
 const SKY_VERTEX = /* glsl */ `
 varying vec3 vDir;
@@ -31,6 +39,7 @@ void main() {
 
 const SKY_FRAGMENT = /* glsl */ `
 varying vec3 vDir;
+uniform float uLow;
 
 float hash21(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -64,6 +73,11 @@ void main() {
   float haze = exp(-pow((d.y + 0.01) * 16.0, 2.0));
   color += vec3(0.015, 0.055, 0.065) * haze * 0.55;
 
+  // Below the local horizon the sphere reads as ground haze, not open space:
+  // past the edge of the terrain the visitor must never see a starfield where
+  // the ground should be.
+  color = mix(vec3(0.006, 0.014, 0.020), color, smoothstep(-0.18, 0.0, d.y));
+
   // Flat, equirectangular star grid: stable in direction space so camera
   // rotation never makes stars crawl or re-roll.
   vec2 sphere = vec2(
@@ -78,24 +92,31 @@ void main() {
   vec2 offsetA = vec2(hash21(cellA + 7.1), hash21(cellA + 11.7));
   float starA = smoothstep(0.055, 0.0, length(fA - offsetA)) * step(0.958, seedA) * 0.86;
 
-  vec2 gridB = sphere * vec2(120.0, 60.0);
-  vec2 cellB = floor(gridB);
-  vec2 fB = fract(gridB);
-  float seedB = hash21(cellB + 19.3);
-  vec2 offsetB = vec2(hash21(cellB + 3.3), hash21(cellB + 29.1));
-  float starB = smoothstep(0.085, 0.0, length(fB - offsetB)) * step(0.988, seedB);
-
-  float star = starA * 0.85 + starB * 0.55;
+  float star = starA * 0.85;
   vec3 starColor = mix(vec3(0.65, 0.82, 0.90), vec3(1.0, 0.94, 0.82), seedA);
+  // No stars (and no galactic band) below the horizon — that is ground.
+  float above = smoothstep(-0.02, 0.07, d.y);
 
-  // Restrained galactic band crossing the sky diagonally.
-  float band = exp(-pow(abs(dot(d, normalize(vec3(0.18, 0.72, 0.67)))), 2.0) * 20.0);
-  float cloud = noise(sphere * vec2(8.0, 4.0) + 3.4);
-  cloud = cloud * 0.6 + noise(sphere * vec2(18.0, 9.0)) * 0.3;
-  vec3 nebulaColor = mix(vec3(0.008, 0.035, 0.060), vec3(0.020, 0.100, 0.120), cloud);
-  color += nebulaColor * band * 0.42;
+  if (uLow < 0.5) {
+    vec2 gridB = sphere * vec2(120.0, 60.0);
+    vec2 cellB = floor(gridB);
+    vec2 fB = fract(gridB);
+    float seedB = hash21(cellB + 19.3);
+    vec2 offsetB = vec2(hash21(cellB + 3.3), hash21(cellB + 29.1));
+    float starB = smoothstep(0.085, 0.0, length(fB - offsetB)) * step(0.988, seedB);
+    star += starB * 0.55;
 
-  color += starColor * star;
+    // Restrained galactic band crossing the sky diagonally. This noise is the
+    // expensive half of the shader, so the low tier keeps the gradient and
+    // stars but skips the nebula entirely.
+    float band = exp(-pow(abs(dot(d, normalize(vec3(0.18, 0.72, 0.67)))), 2.0) * 20.0);
+    float cloud = noise(sphere * vec2(8.0, 4.0) + 3.4);
+    cloud = cloud * 0.6 + noise(sphere * vec2(18.0, 9.0)) * 0.3;
+    vec3 nebulaColor = mix(vec3(0.008, 0.035, 0.060), vec3(0.020, 0.100, 0.120), cloud);
+    color += nebulaColor * band * 0.42 * above;
+  }
+
+  color += starColor * star * above;
 
   // Dither out 8-bit banding in the very dark gradient.
   color += (hash21(gl_FragCoord.xy) - 0.5) / 255.0;
@@ -111,7 +132,9 @@ function makeStarField(count: number, radius: number) {
   const palette = ["#d6e4dc", "#a9c5c7", "#7dabb2", "#d6b28c", "#ecede0"];
 
   for (let i = 0; i < count; i += 1) {
-    const y = hash01(i * 4 + 1) * 2 - 1;
+    // Stars live only above the local horizon: a uniform sample over the
+    // upper hemisphere (equal area per y-band), never under the ground.
+    const y = 0.03 + hash01(i * 4 + 1) * 0.97;
     const angle = hash01(i * 4 + 2) * Math.PI * 2;
     const ring = Math.sqrt(1 - y * y);
     const distance = radius * (0.9 + hash01(i * 4 + 3) * 0.1);
@@ -129,21 +152,19 @@ function makeStarField(count: number, radius: number) {
 
 export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
   const sky = useRef<THREE.Group>(null);
-  const starsMaterial = useRef<THREE.PointsMaterial>(null);
   const palette = useSceneTheme();
   const count = quality === "high" ? 2600 : 900;
-  const stars = useMemo(() => makeStarField(count, 260), [count]);
+  const stars = useMemo(() => makeStarField(count, STAR_RADIUS), [count]);
   const texture = useMemo(() => getDotTexture(), []);
+  const uniforms = useMemo(
+    () => ({ uLow: { value: quality === "low" ? 1 : 0 } }),
+    [quality],
+  );
 
-  useFrame(({ camera, clock }, delta) => {
+  useFrame(({ camera }, delta) => {
     if (!sky.current) return;
     sky.current.position.copy(camera.position);
-    if (!reduced) {
-      sky.current.rotation.y += delta * 0.00035;
-      if (starsMaterial.current) {
-        starsMaterial.current.opacity = 0.82 + Math.sin(clock.elapsedTime * 0.4) * 0.05;
-      }
-    }
+    if (!reduced) sky.current.rotation.y += delta * 0.00035;
   });
 
   // The daylight theme is a separate, intentional palette — a pale sky is
@@ -153,8 +174,9 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
   return (
     <group ref={sky} renderOrder={-1000}>
       <mesh renderOrder={-1000} frustumCulled={false}>
-        <sphereGeometry args={[500, 48, 32]} />
+        <sphereGeometry args={[500, quality === "high" ? 40 : 24, quality === "high" ? 26 : 16]} />
         <shaderMaterial
+          uniforms={uniforms}
           vertexShader={SKY_VERTEX}
           fragmentShader={SKY_FRAGMENT}
           side={THREE.BackSide}
@@ -171,22 +193,25 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
           <bufferAttribute attach="attributes-color" args={[stars.colors, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          ref={starsMaterial}
           map={texture}
-          size={1.35}
+          size={STAR_SIZE}
           sizeAttenuation
           vertexColors
           transparent
           opacity={0.84}
           depthWrite={false}
-          depthTest={false}
+          // Test against the world: transparent objects draw after every
+          // opaque one, so without this the stars paint straight over the
+          // terrain and read as stars lying on the ground.
+          depthTest
           fog={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}
         />
       </points>
 
-      {/* A distant moon / planet: soft glow first, a dim disc on top. */}
+      {/* A distant moon / planet: soft glow first, a dim disc on top.
+          All three test depth so terrain in front of them hides the glow. */}
       <sprite position={[132, 58, -236]} scale={[64, 64, 1]} renderOrder={-998}>
         <spriteMaterial
           map={texture}
@@ -194,7 +219,7 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
           transparent
           opacity={0.14}
           depthWrite={false}
-          depthTest={false}
+          depthTest
           fog={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}
@@ -202,7 +227,7 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
       </sprite>
       <mesh position={[132, 58, -236]} renderOrder={-997}>
         <sphereGeometry args={[9, 24, 16]} />
-        <meshBasicMaterial color="#0a2735" fog={false} depthWrite={false} depthTest={false} toneMapped={false} />
+        <meshBasicMaterial color="#0a2735" fog={false} depthWrite={false} depthTest toneMapped={false} />
       </mesh>
       <sprite position={[132, 58, -236]} scale={[20, 20, 1]} renderOrder={-996}>
         <spriteMaterial
@@ -211,7 +236,7 @@ export function GalaxySky({ quality, reduced }: GalaxySkyProps) {
           transparent
           opacity={0.22}
           depthWrite={false}
-          depthTest={false}
+          depthTest
           fog={false}
           blending={THREE.AdditiveBlending}
           toneMapped={false}

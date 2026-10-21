@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 import { mixHex, useSceneTheme } from "@/lib/world/scene-theme";
 import { Pillar, StoneMaterial } from "@/components/world/temple/TempleGeometry";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 /**
  * Reusable ceremonial temple entrance.
@@ -69,6 +70,9 @@ export function TempleEntrance({
   useEffect(() => {
     onOpenedRef.current = onOpened;
   }, [onOpened]);
+  useEffect(() => {
+    requestWorldFrame();
+  }, [open]);
   const pediment = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-halfW - 1.05, 0);
@@ -79,18 +83,37 @@ export function TempleEntrance({
   }, [halfW]);
 
   useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
     const spring = springRef.current;
     if (spring.open !== open) {
       spring.open = open;
       spring.elapsed = 0;
-    } else {
-      spring.elapsed += dt;
     }
+
+    const openingAngle = Math.PI * 0.43;
+    const leftTarget = open ? openingAngle : 0;
+    const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
+    const sealTarget = open ? 0 : 0.72;
+    const left = leftRef.current;
+    const right = rightRef.current;
+    const seal = sealRef.current;
+
+    // Doors at rest should cost nothing per frame (the demand loop already
+    // sleeps when idle; this also keeps always-on walk mode nearly free).
+    const atRest =
+      left &&
+      right &&
+      Math.abs(left.rotation.y - leftTarget) < 0.0015 &&
+      Math.abs(right.rotation.y - rightTarget) < 0.0015 &&
+      Math.abs(spring.leftVelocity) < 0.001 &&
+      Math.abs(spring.rightVelocity) < 0.001 &&
+      (!seal || Math.abs(seal.opacity - sealTarget) < 0.004);
+    if (atRest) return;
+
     const updateHinge = (
       hinge: THREE.Group | null,
       velocity: "leftVelocity" | "rightVelocity",
       target: number,
+      dt: number,
     ) => {
       if (!hinge) return;
       if (reduced) {
@@ -109,19 +132,30 @@ export function TempleEntrance({
         spring[velocity] = 0;
       }
     };
-    const openingAngle = Math.PI * 0.43;
-    if (leftRef.current) {
-      updateHinge(leftRef.current, "leftVelocity", open ? openingAngle : 0);
+
+    // Integrate in fixed substeps so a slow device (or a backgrounded tab)
+    // cannot stretch the gate animation into a 30-second wait. The clamp keeps
+    // a long stall from running hundreds of iterations at once.
+    const total = Math.min(delta, 0.5);
+    let remaining = total;
+    while (remaining > 0) {
+      const step = Math.min(remaining, 1 / 60);
+      remaining -= step;
+      spring.elapsed += step;
+      if (leftRef.current) {
+        updateHinge(leftRef.current, "leftVelocity", open ? openingAngle : 0, step);
+      }
+      if (rightRef.current) {
+        const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
+        updateHinge(rightRef.current, "rightVelocity", rightTarget, step);
+      }
     }
-    if (rightRef.current) {
-      const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
-      updateHinge(rightRef.current, "rightVelocity", rightTarget);
-    }
+
     if (sealRef.current) {
       const opacity = open ? 0 : 0.72;
       sealRef.current.opacity = reduced
         ? opacity
-        : THREE.MathUtils.damp(sealRef.current.opacity, opacity, 1.7, dt);
+        : THREE.MathUtils.damp(sealRef.current.opacity, opacity, 1.7, Math.min(delta, 0.25));
     }
 
     // Clearance event, not a timer: both leaves must be past ~86% of their
@@ -138,6 +172,9 @@ export function TempleEntrance({
       openedRef.current = true;
       onOpenedRef.current?.();
     }
+
+    // Follow the transition through to rest even on the demand loop.
+    requestWorldFrame();
   });
 
   const leafColor = mixHex(palette.stoneDark, palette.stoneLight, palette.isLight ? 0.32 : 0.52);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Suspense,
   useEffect,
@@ -15,6 +15,9 @@ import { AdaptiveDpr } from "@react-three/drei";
 import { useWorldState } from "@/lib/world/store";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { GalaxySky } from "@/components/world/GalaxySky";
+import { QualityGovernor } from "@/components/world/QualityGovernor";
+import { registerWorldInvalidator, requestWorldFrame } from "@/lib/world/render-loop";
+import { REF_ASPECT, resolveSceneFov } from "@/lib/world/viewport";
 
 interface SceneCanvasProps {
   children: ReactNode;
@@ -26,6 +29,45 @@ interface SceneCanvasProps {
   animate?: boolean;
   /** Disable pointer interactions during a scene's entry transition. */
   interactive?: boolean;
+}
+
+/** Publishes this canvas' demand-loop invalidator for DOM-driven input. */
+function FrameBridge({ enabled }: { enabled: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!enabled) return;
+    return registerWorldInvalidator(invalidate);
+  }, [enabled, invalidate]);
+  return null;
+}
+
+/**
+ * Keeps the vertical FOV matched to the live aspect ratio. Poses are authored
+ * for a desktop window; without this a portrait phone shows barely half of
+ * the authored horizontal framing and every composition reads cramped.
+ * The write happens per frame (with a `requestWorldFrame` on resize) so the
+ * camera object never has to be mutated from inside a hook effect.
+ */
+function ResponsiveFov({ baseFov }: { baseFov: number }) {
+  const size = useThree((state) => state.size);
+  const isMobile = useIsMobile();
+
+  useFrame((state) => {
+    const camera = state.camera;
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const next = resolveSceneFov(baseFov, state.size.width / Math.max(1, state.size.height), isMobile);
+    if (Math.abs(camera.fov - next) < 0.05) return;
+    camera.fov = next;
+    camera.updateProjectionMatrix();
+  });
+
+  // A resize, rotation or theme change must produce a frame even while the
+  // demand loop is idle, or the framing would wait for the next interaction.
+  useEffect(() => {
+    requestWorldFrame();
+  }, [size.width, size.height, baseFov, isMobile]);
+
+  return null;
 }
 
 let cachedWebgl: boolean | null = null;
@@ -60,7 +102,7 @@ export function SceneCanvas({
   animate = true,
   interactive = true,
 }: SceneCanvasProps) {
-  const { quality, activeObject, mapOpen, codex, worldEntry } = useWorldState();
+  const { quality, activeObject, mapOpen, codex, worldEntry, walkMode } = useWorldState();
   const isMobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
@@ -114,6 +156,12 @@ export function SceneCanvas({
     return () => observer.disconnect();
   }, []);
 
+  // A theme or quality change can arrive while the demand loop is asleep —
+  // draw once so the new palette/DPR is actually visible.
+  useEffect(() => {
+    requestWorldFrame();
+  }, [background, fog?.color, fog?.density, quality]);
+
   if (!webglOk) return null;
 
   const dpr: [number, number] = quality === "high"
@@ -130,10 +178,20 @@ export function SceneCanvas({
   // clearance event and the (snapped) handoff can complete instead of
   // stranding the visitor outside a half-open door.
   const entering = worldEntry === "entering";
+  const walking = worldEntry === "inside" && walkMode;
   const frameloop =
-    (entering || (animate && !reduced)) && !tabHidden && !offscreen && !covered
+    (entering || walking || (animate && !reduced)) && !tabHidden && !offscreen && !covered
       ? "always"
       : "demand";
+
+  // The canvas only mounts client-side (see `webglOk`), so the first frame
+  // already opens at the correct aspect framing; `ResponsiveFov` keeps it
+  // matched through rotation and window resizes.
+  const initialFov = resolveSceneFov(
+    cameraFov,
+    typeof window === "undefined" ? REF_ASPECT : window.innerWidth / Math.max(1, window.innerHeight),
+    isMobile,
+  );
 
   return (
     // `touch-action: none` scopes the world's drag navigation to the canvas:
@@ -162,9 +220,10 @@ export function SceneCanvas({
           powerPreference: "high-performance",
           alpha: false,
           stencil: false,
+          depth: true,
         }}
         camera={{
-          fov: isMobile ? Math.max(cameraFov, 64) : cameraFov,
+          fov: initialFov,
           near: 0.15,
           far: 700,
           position: cameraPosition,
@@ -179,7 +238,10 @@ export function SceneCanvas({
         <color attach="background" args={[background]} />
         {fog ? <fogExp2 attach="fog" args={[fog.color, fog.density]} /> : null}
         <Suspense fallback={null}>
+          <FrameBridge enabled={!tabHidden && !offscreen} />
+          <ResponsiveFov baseFov={cameraFov} />
           <AdaptiveDpr />
+          <QualityGovernor />
           <GalaxySky quality={quality} reduced={reduced} />
           {children}
         </Suspense>

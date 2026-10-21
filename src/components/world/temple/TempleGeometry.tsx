@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 import { hash01 } from "@/lib/world/anim";
 import { mixHex, useSceneTheme } from "@/lib/world/scene-theme";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 /**
  * Procedural stone-temple architecture. No external GLBs — geometry is built
@@ -180,9 +181,16 @@ export function Rubble({ origin = [0, 0, 0], count = 12, spread = 5 }: { origin?
 export function TempleDoor({
   open,
   accent = "#8fd8ff",
+  onOpened,
 }: {
   open: boolean;
   accent?: string;
+  /**
+   * Fires once, the first time both leaves pass ~86% of their swing — real
+   * doorway clearance rather than a timer, so the camera never walks into a
+   * leaf that is still closing. Mirrors `TempleEntrance`'s event.
+   */
+  onOpened?: () => void;
 }) {
   const leftRef = useRef<THREE.Group>(null);
   const rightRef = useRef<THREE.Group>(null);
@@ -190,22 +198,68 @@ export function TempleDoor({
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme();
   const glow = palette.accent(accent);
+  const openedRef = useRef(false);
+  const onOpenedRef = useRef(onOpened);
+  useEffect(() => {
+    onOpenedRef.current = onOpened;
+  }, [onOpened]);
   const springRef = useRef({
     elapsed: 0,
     leftVelocity: 0,
     rightVelocity: 0,
     open,
   });
+  useEffect(() => {
+    requestWorldFrame();
+  }, [open]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const spring = springRef.current;
-    if (spring.open !== open) {
+    const changed = spring.open !== open;
+    if (changed) {
       spring.open = open;
       spring.elapsed = 0;
     } else {
       spring.elapsed += dt;
     }
+
+    const openingAngle = Math.PI * 0.43;
+    const leftTarget = open ? openingAngle : 0;
+    const rightTarget = open && spring.elapsed > 0.16 ? -openingAngle : 0;
+    const recessTarget = open ? 0 : 1;
+    const left = leftRef.current;
+    const right = rightRef.current;
+    const recess = recessRef.current;
+
+    // Clearance event, not a timer: both leaves must be past ~86% of their
+    // travel before the camera is allowed to move through the doorway. Runs
+    // before the rest check so a door that snaps open (reduced motion) or is
+    // already parked open still reports clearance.
+    if (!open) {
+      openedRef.current = false;
+    } else if (
+      !openedRef.current &&
+      left &&
+      right &&
+      left.rotation.y > openingAngle * 0.86 &&
+      right.rotation.y < -openingAngle * 0.86
+    ) {
+      openedRef.current = true;
+      onOpenedRef.current?.();
+    }
+
+    const atRest =
+      !changed &&
+      left &&
+      right &&
+      Math.abs(left.rotation.y - leftTarget) < 0.0015 &&
+      Math.abs(right.rotation.y - rightTarget) < 0.0015 &&
+      Math.abs(spring.leftVelocity) < 0.001 &&
+      Math.abs(spring.rightVelocity) < 0.001 &&
+      (!recess || Math.abs(recess.opacity - recessTarget) < 0.004);
+    if (atRest) return;
+
     const updateHinge = (
       hinge: THREE.Group | null,
       velocity: "leftVelocity" | "rightVelocity",
@@ -226,7 +280,6 @@ export function TempleDoor({
         spring[velocity] = 0;
       }
     };
-    const openingAngle = Math.PI * 0.43;
     updateHinge(leftRef.current, "leftVelocity", open ? openingAngle : 0);
     updateHinge(
       rightRef.current,
@@ -239,6 +292,8 @@ export function TempleDoor({
         ? opacity
         : THREE.MathUtils.damp(recessRef.current.opacity, opacity, 2.1, dt);
     }
+
+    requestWorldFrame();
   });
 
   return (

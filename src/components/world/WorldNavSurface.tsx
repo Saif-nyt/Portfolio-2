@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { addZoom, resetMoveInput, setMoveInput, useWorldState } from "@/lib/world/store";
+import { addLookInput, addZoom, resetMoveInput, setMoveInput, useWorldState } from "@/lib/world/store";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 /** Finger travel (px) before a press counts as a drag rather than a tap. */
 const DRAG_THRESHOLD = 8;
@@ -57,15 +58,21 @@ export function WorldNavSurface({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { activeObject, mapOpen, codex, collectionOpen } = useWorldState();
+  const { activeObject, mapOpen, codex, collectionOpen, walkMode } = useWorldState();
   // An open panel/map/codex/collection takes over the screen; block world movement behind it.
   const blocked = Boolean(activeObject) || mapOpen || codex !== null || collectionOpen;
   const blockedRef = useRef(blocked);
+  // In walk mode a drag looks the camera; the virtual joystick owns movement.
+  const walkRef = useRef(walkMode);
 
   useEffect(() => {
     blockedRef.current = blocked;
     if (blocked) resetMoveInput();
   }, [blocked]);
+
+  useEffect(() => {
+    walkRef.current = walkMode;
+  }, [walkMode]);
 
   useEffect(() => {
     const surface = ref.current;
@@ -75,6 +82,8 @@ export function WorldNavSurface({
     let dragId = -1;
     let startX = 0;
     let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
     let moved = false;
     let pinching = false;
     let pinchDist = 0;
@@ -94,6 +103,9 @@ export function WorldNavSurface({
       pinching = false;
       pinchDist = 0;
       endDrag();
+      // Let the demand loop ease the camera back to rest after an interrupted
+      // gesture, even when no pointerup follows (blur, hidden tab, unmount).
+      requestWorldFrame();
     };
 
     const onPointerDown = (event: PointerEvent) => {
@@ -101,6 +113,8 @@ export function WorldNavSurface({
       if (blockedRef.current || isInteractive(event.target)) return;
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pointers.size >= 2) {
+        // In walk mode movement belongs to the joystick; ignore extra fingers.
+        if (walkRef.current) return;
         // A second finger turns the gesture into a pinch; abandon any drag.
         pinching = true;
         moved = true;
@@ -111,6 +125,8 @@ export function WorldNavSurface({
       dragId = event.pointerId;
       startX = event.clientX;
       startY = event.clientY;
+      lastX = event.clientX;
+      lastY = event.clientY;
       moved = false;
     };
 
@@ -123,15 +139,27 @@ export function WorldNavSurface({
         const dist = pointerDistance(pointers);
         if (pinchDist > 0 && dist > 0) addZoom(Math.log(dist / pinchDist) * PINCH_GAIN);
         pinchDist = dist;
+        requestWorldFrame();
         return;
       }
       if (dragId === -1 || event.pointerId !== dragId) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
       if (!moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) moved = true;
-      if (!moved) return;
+      if (!moved) {
+        lastX = event.clientX;
+        lastY = event.clientY;
+        return;
+      }
+      if (walkRef.current) {
+        addLookInput(event.clientX - lastX, event.clientY - lastY);
+        lastX = event.clientX;
+        lastY = event.clientY;
+        return;
+      }
       // Origin is the joystick centre; displacement sets direction + intensity.
       setMoveInput(clampUnit(dx / SATURATION), clampUnit(-dy / SATURATION));
+      requestWorldFrame();
     };
 
     const onPointerUp = (event: PointerEvent) => {
@@ -145,6 +173,7 @@ export function WorldNavSurface({
       if (event.pointerId === dragId) {
         if (moved) suppressClickUntil = performance.now() + CLICK_SUPPRESS_MS;
         endDrag();
+        requestWorldFrame();
       }
     };
 
@@ -176,6 +205,7 @@ export function WorldNavSurface({
       if (!event.ctrlKey || blockedRef.current) return;
       event.preventDefault();
       addZoom(-event.deltaY * 0.002);
+      requestWorldFrame();
     };
 
     const onInterrupt = () => end();

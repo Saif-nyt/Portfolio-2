@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import * as THREE from "three";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
@@ -9,38 +10,67 @@ import { TempleEntrance } from "@/components/world/TempleEntrance";
 import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions, useWorldState } from "@/lib/world/store";
-import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
+import { usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme, mixHex } from "@/lib/world/scene-theme";
 import { readJson, writeJson } from "@/lib/storage";
 import { Campsite } from "./Campsite";
 import { Forest } from "./Forest";
 import { GateCinematic } from "./GateCinematic";
+import { HomeLandscape } from "./HomeLandscape";
+import { HomeGrass } from "./home-grass";
+import { HomeCampfires } from "./home-campfires";
+import { HomeHomesteads } from "./home-homesteads";
+import { HomeFireflies } from "./home-fireflies";
+import { WalkController } from "./WalkController";
+import { WalkHint, WalkJoystick } from "./WalkControls";
+import { homeHeight } from "./home-terrain";
+import { HOME_PATHS, homeWalkHeight } from "./home-world";
 
 const WORLD_ENTERED_KEY = "world-entered";
 
 const ACCENT = "#63f5e7";
-const PATH_WIDTH = 1.45;
-const PATH_ROUTES: [number, number, number][][] = [
-  [[0, 0.025, 16], [0, 0.025, 12], [0.2, 0.025, 8], [-0.35, 0.025, 5], [0, 0.025, 2]],
-  [[0, 0.025, 2], [-0.8, 0.025, 1.6], [-1.8, 0.025, 1.6], [-2.5, 0.025, 2]],
-  [[0, 0.025, 2], [1, 0.025, 1.5], [2, 0.025, 1.3], [3, 0.025, 1.5]],
-  [[0, 0.025, 2], [-1.2, 0.025, 0.8], [-2.6, 0.025, -0.2], [-4, 0.025, -1]],
-];
+const PATH_WIDTH = 2.1;
+
+function buildPathCurve(route: [number, number][]): THREE.CatmullRomCurve3 {
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i < route.length - 1; i += 1) {
+    const [ax, az] = route[i];
+    const [bx, bz] = route[i + 1];
+    const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 1.2));
+    for (let step = 0; step < steps; step += 1) {
+      const t = step / steps;
+      const x = ax + (bx - ax) * t;
+      const z = az + (bz - az) * t;
+      points.push(new THREE.Vector3(x, homeWalkHeight(x, z) + 0.04, z));
+    }
+  }
+  const [lx, lz] = route[route.length - 1];
+  points.push(new THREE.Vector3(lx, homeWalkHeight(lx, lz) + 0.04, lz));
+  return new THREE.CatmullRomCurve3(points, false, "centripetal");
+}
 
 function makePathRibbon(
   curve: THREE.CatmullRomCurve3,
   width: number,
   sideOffset = 0,
+  lift = 0.07,
 ): THREE.BufferGeometry {
-  const samples = curve.getPoints(64);
+  const samples = curve.getPoints(120);
   const positions = new Float32Array(samples.length * 2 * 3);
   const indices: number[] = [];
 
   for (let i = 0; i < samples.length; i += 1) {
     const point = samples[i];
-    const tangent = curve.getTangent(i / (samples.length - 1));
-    const sideX = -tangent.z;
-    const sideZ = tangent.x;
+    // Keep the ribbon on the actual ground (and bridge ramps) instead of
+    // letting the spline float over crests or sink into the terrain.
+    point.y = homeWalkHeight(point.x, point.z) + lift;
+    const previous = samples[Math.max(0, i - 1)];
+    const next = samples[Math.min(samples.length - 1, i + 1)];
+    const tx = next.x - previous.x;
+    const tz = next.z - previous.z;
+    const length = Math.hypot(tx, tz) || 1;
+    const sideX = -tz / length;
+    const sideZ = tx / length;
     const centerX = point.x + sideX * sideOffset;
     const centerZ = point.z + sideZ * sideOffset;
     const halfWidth = width / 2;
@@ -69,17 +99,18 @@ function makePathRibbon(
 function PathPulses({ paths }: { paths: Array<{ curve: THREE.CatmullRomCurve3 }> }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const palette = useSceneTheme();
+  const reduced = usePrefersReducedMotion();
   const markers = useMemo(
     () =>
       paths.flatMap(({ curve }, routeIndex) => {
-        const count = routeIndex === 0 ? 6 : 3;
+        const count = reduced ? 0 : routeIndex === 0 ? 4 : 2;
         return Array.from({ length: count }, (_, index) => ({
           curve,
           routeIndex,
           phase: index / count,
         }));
       }),
-    [paths],
+    [paths, reduced],
   );
   const geometry = useMemo(() => new THREE.SphereGeometry(0.065, 6, 5), []);
   const material = useMemo(
@@ -91,28 +122,27 @@ function PathPulses({ paths }: { paths: Array<{ curve: THREE.CatmullRomCurve3 }>
     [palette],
   );
   const markerRef = useRef(new THREE.Object3D());
-  const reduced = usePrefersReducedMotion();
+  const markerPoint = useRef(new THREE.Vector3());
 
   useFrame(({ clock }) => {
     const mesh = ref.current;
-    if (!mesh) return;
+    if (!mesh || reduced || markers.length === 0) return;
     const marker = markerRef.current;
+    const point = markerPoint.current;
     for (let i = 0; i < markers.length; i += 1) {
       const { curve, routeIndex, phase } = markers[i];
-      const progress = reduced
-        ? phase
-        : 0.5 - 0.5 * Math.cos(clock.elapsedTime * 0.28 + phase * Math.PI * 2 + routeIndex * 0.7);
-      const point = curve.getPointAt(progress);
+      const progress = 0.5 - 0.5 * Math.cos(clock.elapsedTime * 0.24 + phase * Math.PI * 2 + routeIndex * 0.7);
+      curve.getPointAt(progress, point);
       marker.position.set(point.x, point.y + 0.07, point.z);
-      const scale = reduced
-        ? 0.75
-        : 0.76 + Math.sin(clock.elapsedTime * 0.8 + phase * Math.PI * 2) * 0.04;
+      const scale = 0.76 + Math.sin(clock.elapsedTime * 0.7 + phase * Math.PI * 2) * 0.03;
       marker.scale.setScalar(scale);
       marker.updateMatrix();
       mesh.setMatrixAt(i, marker.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
   });
+
+  if (reduced || markers.length === 0) return null;
 
   return (
     <instancedMesh ref={ref} args={[geometry, material, markers.length]} frustumCulled={false} />
@@ -121,7 +151,10 @@ function PathPulses({ paths }: { paths: Array<{ curve: THREE.CatmullRomCurve3 }>
 
 const POSES: Record<string, CameraPose> = {
   entrance: { position: [0, 6.2, 35], lookAt: [0, 4.3, 17] },
-  overview: { position: [0, 3.2, 10], lookAt: [0, 1.2, 0] },
+  overview: { position: [0, 3.4, 10], lookAt: [0, 2.2, -24] },
+  gateway: { position: [0, 3.4, 9], lookAt: [0, 3.6, 17] },
+  valley: { position: [10.5, 6.2, -31], lookAt: [0, 1.1, -40] },
+  canyon: { position: [-14, 9, 2], lookAt: [0, 4, -80] },
   map: { position: [0, 2.2, 6.5], lookAt: [0, 1, 0] },
   camp: { position: [-1.5, 2.4, 8.0], lookAt: [-4.6, 0.7, 2.4] },
   temple: { position: [-2.5, 2, 5], lookAt: [-5, 1.5, 2] },
@@ -129,100 +162,63 @@ const POSES: Record<string, CameraPose> = {
   beacon: { position: [0, 2.4, 4], lookAt: [0, 1.8, 0] },
 };
 
+const VANTAGES: { id: keyof typeof POSES; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "gateway", label: "Gate" },
+  { id: "valley", label: "Causeway" },
+  { id: "canyon", label: "Canyon" },
+];
+
+const TEMPLE_X = -26;
+const TEMPLE_Z = -86;
+const TEMPLE_POSITION: [number, number, number] = [
+  TEMPLE_X,
+  homeHeight(TEMPLE_X, TEMPLE_Z) - 0.2,
+  TEMPLE_Z,
+];
+
 /** Glowing path strip on the valley floor. */
 function ValleyPath() {
   const palette = useSceneTheme();
-  const paths = useMemo(
-    () =>
-      PATH_ROUTES.map((route) => {
-        const curve = new THREE.CatmullRomCurve3(route.map((point) => new THREE.Vector3(...point)));
-        return {
-          curve,
-          ground: makePathRibbon(curve, PATH_WIDTH),
-          edges: [
-            makePathRibbon(curve, 0.035, PATH_WIDTH / 2 - 0.06),
-            makePathRibbon(curve, 0.035, -PATH_WIDTH / 2 + 0.06),
-          ],
-        };
-      }),
-    [],
-  );
-
-  return (
-    <group>
-      {paths.map((path, index) => (
-        <group key={index}>
-          <mesh geometry={path.ground} receiveShadow>
-            <meshStandardMaterial
-              color={mixHex(palette.floorDeep, palette.stoneDark, 0.42)}
-              roughness={0.92}
-            />
-          </mesh>
-          {path.edges.map((edge, edgeIndex) => (
-            <mesh key={edgeIndex} geometry={edge}>
-              <meshBasicMaterial
-                color={palette.accent(ACCENT)}
-                transparent
-                opacity={0.52}
-                toneMapped={false}
-              />
-            </mesh>
-          ))}
-        </group>
-      ))}
-      <PathPulses paths={paths} />
-    </group>
-  );
-}
-
-function ValleyTerrain() {
-  const palette = useSceneTheme();
-  const geometry = useMemo(() => {
-    const terrain = new THREE.PlaneGeometry(300, 300, 96, 96);
-    const positions = terrain.attributes.position;
-
-    for (let i = 0; i < positions.count; i += 1) {
-      const x = positions.getX(i);
-      const z = -positions.getY(i);
-      const distance = Math.hypot(x, z);
-      const rise = THREE.MathUtils.smoothstep(distance, 24, 108);
-      const ridges =
-        Math.sin(x * 0.04 + Math.sin(z * 0.025) * 1.7) * 1.6 +
-        Math.sin(z * 0.075 + x * 0.018) * 0.7;
-
-      positions.setZ(i, rise * (ridges + rise * 3.2));
-    }
-
-    terrain.computeVertexNormals();
-    return terrain;
+  // Build every route once, then merge the six road ribbons and ten glowing
+  // edge ribbons into two meshes. Six separate materials were paying a draw
+  // call each for identical material state.
+  const merged = useMemo(() => {
+    const built = HOME_PATHS.map((route) => {
+      const curve = buildPathCurve(route);
+      return {
+        curve,
+        ground: makePathRibbon(curve, PATH_WIDTH),
+        edges: [
+          makePathRibbon(curve, 0.09, PATH_WIDTH / 2 - 0.08, 0.081),
+          makePathRibbon(curve, 0.09, -PATH_WIDTH / 2 + 0.08, 0.081),
+        ],
+      };
+    });
+    return {
+      paths: built.map(({ curve }) => ({ curve })),
+      ground: mergeGeometries(built.map((path) => path.ground))!,
+      edges: mergeGeometries(built.flatMap((path) => path.edges))!,
+    };
   }, []);
 
   return (
-    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <meshStandardMaterial color={palette.floor} roughness={0.96} />
-    </mesh>
-  );
-}
-
-/** Distant floating islands — cheap cones with emissive undersides. */
-function FloatingIsland({
-  position,
-  scale = 1,
-}: {
-  position: [number, number, number];
-  scale?: number;
-}) {
-  const palette = useSceneTheme();
-  return (
-    <group position={position} scale={scale}>
-      <mesh>
-        <coneGeometry args={[1.2, 1.8, 6]} />
-        <meshStandardMaterial color={palette.stoneDark} roughness={1} flatShading />
+    <group>
+      <mesh geometry={merged.ground} receiveShadow>
+        <meshStandardMaterial
+          color={mixHex(palette.floorDeep, palette.isLight ? "#8d7d58" : "#7a684a", 0.72)}
+          roughness={0.92}
+        />
       </mesh>
-      <mesh position={[0, -1, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[0.9, 1, 6]} />
-        <meshStandardMaterial color={palette.floorDeep} emissive={palette.accent(ACCENT)} emissiveIntensity={0.25} />
+      <mesh geometry={merged.edges}>
+        <meshBasicMaterial
+          color={palette.accent(ACCENT)}
+          transparent
+          opacity={0.34}
+          toneMapped={false}
+        />
       </mesh>
+      <PathPulses paths={merged.paths} />
     </group>
   );
 }
@@ -256,7 +252,6 @@ function DistantTemple({
           <meshStandardMaterial color={palette.stoneDark} roughness={0.98} flatShading />
         </mesh>
       ))}
-      <pointLight position={[0, 4.8, 0.6]} color="#8fd8ff" intensity={4} distance={9} decay={2} />
     </group>
   );
 }
@@ -274,7 +269,6 @@ function MapPedestal() {
         <cylinderGeometry args={[0.55, 0.55, 0.1, 8]} />
         <meshStandardMaterial color={palette.plinth} emissive={palette.accent(ACCENT)} emissiveIntensity={1 * palette.glow} toneMapped={false} />
       </mesh>
-      <pointLight position={[0, 1.5, 0]} color={ACCENT} intensity={3} distance={5} decay={2} />
     </group>
   );
 }
@@ -296,24 +290,26 @@ function GlowCrystals({
           <meshStandardMaterial color={mixHex(palette.stoneDark, color, 0.35)} emissive={palette.accent(color)} emissiveIntensity={1.8 * palette.glow} toneMapped={false} />
         </mesh>
       ))}
-      <pointLight position={[0, 0.5, 0]} color={color} intensity={2.5} distance={3.5} decay={2} />
     </group>
   );
 }
 
 /**
- * Arrival Valley — Home. A lightweight alien landscape with a glowing path,
- * distant floating islands, a temple on the horizon, interactive crystals, a
- * central map pedestal that opens the star chart, and a living campsite — a
- * hand-built cabin and animated campfire ringed by wind-swept vegetation,
- * drifting spores, fireflies and low ground mist.
+ * Arrival Valley — Home. A vast alien frontier: layered terrain cut by the Long
+ * Ravine, giant monoliths, a distant bioluminescent forest, a stone causeway,
+ * the Great Arch and the temple on the far ridge — plus a central map pedestal
+ * that opens the star chart and a living campsite ringed by drifting spores,
+ * fireflies and low ground mist.
  */
 export function ArrivalScene() {
   const reduced = usePrefersReducedMotion();
-  const isMobile = useIsMobile();
-  const { quality, worldEntry } = useWorldState();
+  const { quality, worldEntry, walkMode, nearby, activeObject, mapOpen, codex, collectionOpen } =
+    useWorldState();
+  const walking = worldEntry === "inside" && walkMode;
+  const overlaysOpen = Boolean(activeObject) || mapOpen || codex !== null || collectionOpen;
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
   const [gateCleared, setGateCleared] = useState(false);
+  const [skipRequested, setSkipRequested] = useState(false);
   const palette = useSceneTheme({ bg: "#d6ddd0", fog: "#dfe6da" });
 
   // Opening the gate clears the camera only once the leaves actually part.
@@ -322,9 +318,10 @@ export function ArrivalScene() {
   const finishEntry = useCallback(() => {
     writeJson(WORLD_ENTERED_KEY, true);
     worldActions.completeWorldEntry();
+    worldActions.setWalkMode(true);
   }, []);
 
-  const skipEntry = useCallback(() => finishEntry(), [finishEntry]);
+  const skipEntry = useCallback(() => setSkipRequested(true), []);
 
   // The value is intentionally read once per mount: it only decides whether
   // the entry copy mentions a skippable repeat visit.
@@ -334,11 +331,11 @@ export function ArrivalScene() {
     <SceneScope accent={ACCENT}>
       <SceneCanvas
         cameraPosition={POSES.entrance.position}
-        cameraFov={isMobile ? 72 : 46}
+        cameraFov={46}
         background={palette.bg}
         fog={{
           color: palette.fog,
-          density: palette.isLight ? 0.022 : 0.018,
+          density: palette.isLight ? 0.011 : 0.009,
         }}
         animate={worldEntry !== "outside"}
         interactive={worldEntry === "inside"}
@@ -348,17 +345,20 @@ export function ArrivalScene() {
           pose={worldEntry === "outside" ? "entrance" : pose}
           poses={POSES}
           reduced={reduced}
-          allowSteering={worldEntry === "inside"}
-          suspended={worldEntry === "entering"}
+          baseFov={46}
+          allowSteering={worldEntry === "inside" && !walkMode}
+          suspended={worldEntry === "entering" || walking}
         />
+        <WalkController active={walking} quality={quality} reduced={reduced} />
         <GateCinematic
           active={worldEntry === "entering"}
           cleared={gateCleared}
+          skip={skipRequested}
           reduced={reduced}
           onComplete={finishEntry}
         />
 
-        <ValleyTerrain />
+        <HomeLandscape quality={quality} reduced={reduced} />
         {/* The main world gate is deliberately larger than every destination entrance. */}
         <TempleEntrance
           position={[0, 0, 17]}
@@ -370,16 +370,16 @@ export function ArrivalScene() {
           onOpened={handleGateOpened}
         />
 
-        <DistantHorizon accent={ACCENT} scale={1.25} quality={quality} />
+        <DistantHorizon accent={ACCENT} scale={1.25} quality={quality} floating={false} />
         <ValleyPath />
-        <DistantTemple position={[0, 0, -38]} scale={3.8} />
+        <DistantTemple position={TEMPLE_POSITION} scale={4.2} />
         <MapPedestal />
         <Campsite quality={quality} reduced={reduced} />
-        <Forest quality={quality} reduced={reduced} />
-
-        <FloatingIsland position={[-8, 6, -10]} scale={1.4} />
-        <FloatingIsland position={[7, 7.5, -12]} scale={1.8} />
-        <FloatingIsland position={[2, 5.5, -9]} scale={1} />
+        <HomeHomesteads reduced={reduced} />
+        <HomeGrass quality={quality} reduced={reduced} />
+        <HomeCampfires quality={quality} reduced={reduced} />
+        <HomeFireflies quality={quality} reduced={reduced} />
+        <Forest quality={quality} reduced={reduced} grass={false} />
 
         <GlowCrystals position={[-2.5, 0, 2]} />
         <GlowCrystals position={[3, 0, 1.5]} color="#b39dff" />
@@ -416,10 +416,40 @@ export function ArrivalScene() {
           }}
         />
 
+        {/* Causeway overlook — a reason to walk the valley and see the scale. */}
+        <Hotspot3D
+          position={[0, 1.5, -31]}
+          radius={4}
+          accent={ACCENT}
+          showIndicator={false}
+          object={{
+            id: "causeway",
+            eyebrow: "THE LONG CAUSEWAY",
+            title: "A Crossing Over the Ravine",
+            body: "A stone bridge spans the deep cut in the valley floor. From the middle, the forest, the Great Arch and the temple on the far ridge line up across the haze.",
+            actions: [{ label: "Take the overlook", onClick: () => setPose("valley") }],
+          }}
+        />
+
+        {/* Great Arch — optional landmark, no destination required. */}
+        <Hotspot3D
+          position={[0, 30, -108]}
+          radius={26}
+          accent="#8fd8ff"
+          showIndicator={false}
+          object={{
+            id: "great-arch",
+            eyebrow: "THE GREAT ARCH · NORTH RIDGE",
+            title: "A Monument Older Than the Map",
+            body: "The arch frames the temple approach. No record says who raised it — only that the road was already old when the first surveyors arrived.",
+            actions: [{ label: "View from the canyon", onClick: () => setPose("canyon") }],
+          }}
+        />
+
         {/* Temple beacon → About */}
         <Hotspot3D
-          position={[0, 8, -38]}
-          radius={5}
+          position={[TEMPLE_X, homeHeight(TEMPLE_X, TEMPLE_Z) + 15, TEMPLE_Z]}
+          radius={13}
           accent="#8fd8ff"
           showIndicator={false}
           object={{
@@ -474,6 +504,20 @@ export function ArrivalScene() {
         />
       </SceneCanvas>
 
+      {worldEntry === "inside" ? (
+        <>
+          <WalkHint visible={walking && !overlaysOpen} accent={ACCENT} />
+          <WalkJoystick visible={walking && !overlaysOpen} />
+          {walking && nearby && !overlaysOpen ? (
+            <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex justify-center px-4">
+              <p className="rounded-full border border-line bg-[var(--veil)] px-3.5 py-1.5 font-mono text-[0.5rem] tracking-[0.17em] text-dim uppercase backdrop-blur-md">
+                {nearby}
+              </p>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+
       {/* A light, top-weighted veil keeps the outside headline legible without hiding the gate. */}
       <div
         aria-hidden="true"
@@ -484,6 +528,46 @@ export function ArrivalScene() {
             : "transparent",
         }}
       />
+
+      {worldEntry === "inside" ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-20 z-20 flex justify-center px-4 sm:bottom-24">
+          <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-line bg-[var(--veil)] p-1 backdrop-blur-md">
+            <button
+              type="button"
+              aria-pressed={walking}
+              onClick={() => worldActions.setWalkMode(true)}
+              className={`shrink-0 rounded-full px-3 py-1.5 font-mono text-[0.53rem] tracking-[0.16em] uppercase transition ${
+                walking
+                  ? "bg-accent/15 text-accent"
+                  : "text-dim hover:bg-[var(--veil)] hover:text-ink"
+              }`}
+            >
+              Walk
+            </button>
+            {VANTAGES.map((vantage) => {
+              const active = !walking && pose === vantage.id;
+              return (
+                <button
+                  key={vantage.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    worldActions.setWalkMode(false);
+                    setPose(vantage.id);
+                  }}
+                  className={`shrink-0 rounded-full px-3 py-1.5 font-mono text-[0.53rem] tracking-[0.16em] uppercase transition ${
+                    active
+                      ? "bg-accent/15 text-accent"
+                      : "text-dim hover:bg-[var(--veil)] hover:text-ink"
+                  }`}
+                >
+                  {vantage.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {worldEntry === "outside" ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-6 pt-24 pb-20 text-center sm:pt-36 sm:pb-28">
@@ -504,6 +588,8 @@ export function ArrivalScene() {
               onClick={() => {
                 setPose("overview");
                 setGateCleared(false);
+                setSkipRequested(false);
+                worldActions.setWalkMode(false);
                 worldActions.beginWorldEntry();
               }}
               className="btn-primary"
@@ -526,15 +612,13 @@ export function ArrivalScene() {
           >
             {gateCleared ? "Crossing the threshold…" : "The gate is opening…"}
           </p>
-          {visitedBefore ? (
-            <button
-              type="button"
-              onClick={skipEntry}
-              className="pointer-events-auto rounded-full border border-line bg-[var(--veil)] px-4 py-2 font-mono text-[0.56rem] tracking-[0.18em] text-dim uppercase backdrop-blur-md transition hover:border-linestrong hover:text-accent"
-            >
-              Skip intro
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={skipEntry}
+            className="pointer-events-auto rounded-full border border-line bg-[var(--veil)] px-4 py-2 font-mono text-[0.56rem] tracking-[0.18em] text-dim uppercase backdrop-blur-md transition hover:border-linestrong hover:text-accent"
+          >
+            Skip intro
+          </button>
         </div>
       ) : null}
     </SceneScope>

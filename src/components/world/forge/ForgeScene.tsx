@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -15,6 +15,7 @@ import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { EmberField, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#ffb36b";
@@ -187,7 +188,18 @@ function ForgeStation({
 export function ForgeScene() {
   const router = useRouter();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
-  const [inside, setInside] = useState(false);
+  // Hold the exterior shot until the leaves actually clear the doorway.
+  const doorway = useDoorwayEntry();
+  const { entered: inside } = doorway;
+  const enterForge = useCallback(() => {
+    if (doorway.open) return;
+    setPose("overview");
+    doorway.begin();
+  }, [doorway]);
+  const exitForge = useCallback(() => {
+    doorway.exit();
+    setPose("overview");
+  }, [doorway]);
   const palette = useSceneTheme({ bg: "#e2d6c4", fog: "#ece1d1" });
 
   const discuss = (service: string) => {
@@ -207,13 +219,13 @@ export function ForgeScene() {
         animate
       >
         <LightRig fillColor={ACCENT} intensity={0.8} />
-        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} baseFov={44} />
         <DistantHorizon accent={ACCENT} scale={0.95} />
         <AmbientMotes color={palette.mote} radius={6} height={4.5} count={90} size={0.15} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the forge */}
-        <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={inside} />
+        <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
 
         {/* Forge floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -272,7 +284,13 @@ export function ForgeScene() {
         </p>
       </div>
 
-      <EntrancePrompt label="the Forge" open={inside} onEnter={() => setInside(true)} />
+      <EntrancePrompt
+        label="the Forge"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterForge}
+        onSkip={doorway.skip}
+      />
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
@@ -288,7 +306,7 @@ export function ForgeScene() {
           ))}
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={exitForge}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple

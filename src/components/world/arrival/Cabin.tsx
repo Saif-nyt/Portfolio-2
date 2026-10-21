@@ -10,7 +10,6 @@ interface CabinProps {
   position?: [number, number, number];
   rotationY?: number;
   reduced: boolean;
-  quality: "high" | "low";
 }
 
 const W = 3.6;
@@ -46,15 +45,13 @@ function GableRoof() {
   );
 }
 
-function Windows({ lit, quality }: { lit: boolean; quality: "high" | "low" }) {
-  const warm = useRef<THREE.PointLight>(null);
+function Windows({ lit }: { lit: boolean }) {
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
 
   useFrame(({ clock }) => {
     if (!lit) return;
     const f = flicker(clock.elapsedTime * 0.7, 21.4);
     if (matRef.current) matRef.current.emissiveIntensity = 2.4 + f * 0.5;
-    if (warm.current) warm.current.intensity = 5 + f * 1.5;
   });
 
   const panes: Array<[number, number, number, [number, number, number]]> = [
@@ -89,10 +86,6 @@ function Windows({ lit, quality }: { lit: boolean; quality: "high" | "low" }) {
           </mesh>
         </group>
       ))}
-      <pointLight ref={warm} position={[W / 2 + 0.3, 1.3, 0]} color="#ffab5e" intensity={5} distance={7} decay={2} />
-      {quality === "high" ? (
-        <pointLight position={[0.7, 1.3, D / 2 + 0.3]} color="#ffab5e" intensity={3.2} distance={6} decay={2} />
-      ) : null}
     </group>
   );
 }
@@ -135,7 +128,7 @@ function ChimneySmoke({ reduced }: { reduced: boolean }) {
   );
 }
 
-export function Cabin({ position = [0, 0, 0], rotationY = 0, reduced, quality }: CabinProps) {
+export function Cabin({ position = [0, 0, 0], rotationY = 0, reduced }: CabinProps) {
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       <mesh position={[0, H / 2, 0]} castShadow receiveShadow>
@@ -197,13 +190,13 @@ export function Cabin({ position = [0, 0, 0], rotationY = 0, reduced, quality }:
           <sphereGeometry args={[0.12, 8, 8]} />
           <meshStandardMaterial color="#ffd9a0" emissive="#ffbe6b" emissiveIntensity={2.4} toneMapped={false} />
         </mesh>
-        <pointLight position={[0.7, 1.4, 0.35]} color="#ffc07a" intensity={3.4} distance={5.5} decay={2} />
       </group>
 
-      <pointLight position={[0, 1.15, 0.2]} color="#ffb066" intensity={6.5} distance={11} decay={2} />
-      {quality === "high" ? <pointLight position={[0, 1.6, 0]} color="#ff9a4d" intensity={3} distance={7} decay={2} /> : null}
+      {/* One warm cabin light does the work of the old five-light rig; the
+          windows and lantern carry the rest of the glow with emissive only. */}
+      <pointLight position={[0, 1.35, 0.35]} color="#ffb066" intensity={7} distance={12} decay={2} />
 
-      <Windows lit={!reduced} quality={quality} />
+      <Windows lit={!reduced} />
       <ChimneySmoke reduced={reduced} />
     </group>
   );

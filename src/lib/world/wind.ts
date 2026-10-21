@@ -45,20 +45,27 @@ export function createWindMaterial(opts: {
           #ifdef USE_INSTANCING
             iPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
           #endif
-          float ph = iPos.x * 0.7 + iPos.z * 0.9;
           float bend = smoothstep(0.0, uHeight, transformed.y);
-          float s = sin(uTime * 1.7 + ph) * 0.6 + sin(uTime * 2.9 + ph * 1.6) * 0.4;
-          transformed.x += s * bend * uAmp;
-          transformed.z += cos(uTime * 1.3 + ph * 1.1) * bend * uAmp * 0.5;
-          vec2 wpos = iPos.xz + transformed.xz;
-          vec2 dir = wpos - uPlayer;
-          float d = length(dir);
-          float push = smoothstep(2.0, 0.0, d);
-          transformed.xz += (dir / max(d, 0.0001)) * push * bend * 0.5;
+          if (bend > 0.0001 && uAmp > 0.0001) {
+            float ph = iPos.x * 0.7 + iPos.z * 0.9;
+            float s = sin(uTime * 1.7 + ph) * 0.6 + sin(uTime * 2.9 + ph * 1.6) * 0.4;
+            transformed.x += s * bend * uAmp;
+            transformed.z += cos(uTime * 1.3 + ph * 1.1) * bend * uAmp * 0.5;
+            vec2 wpos = iPos.xz + transformed.xz;
+            vec2 dir = wpos - uPlayer;
+            float d = length(dir);
+            if (d < 3.0) {
+              float push = smoothstep(2.0, 0.0, d);
+              transformed.xz += (dir / max(d, 0.0001)) * push * bend * 0.25;
+            }
+          }
         }`,
       );
   };
-  material.customProgramCacheKey = () => `wind-${height}`;
+  // All wind materials share one shader program: height, colour and amplitude
+  // are uniforms, so including height in the cache key only fragmented program
+  // compilation between the grass and forest variants.
+  material.customProgramCacheKey = () => "nebula-wind";
 
   material.userData.wind = { time, player, amp };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import {
@@ -12,7 +12,9 @@ import {
 } from "@/lib/world/store";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 import { useSceneTheme } from "@/lib/world/scene-theme";
+import { entrancePullScale } from "@/lib/world/viewport";
 import { getDotTexture } from "@/components/world/arrival/fx-textures";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 interface Hotspot3DProps {
   position: [number, number, number];
@@ -48,7 +50,12 @@ export function Hotspot3D({
   const ring2Ref = useRef<THREE.Mesh>(null);
   const orbRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
+  const ringMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const ring2MatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const haloMatRef = useRef<THREE.SpriteMaterial>(null);
+  // Hover is a ref, not state: crossing nine hotspots must not re-render the
+  // scene tree. Materials are updated directly and the loop picks up the rest.
+  const hoveredRef = useRef(false);
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme();
   const shadowTex = useMemo(() => getDotTexture(), []);
@@ -57,6 +64,7 @@ export function Hotspot3D({
 
   useFrame(({ clock }) => {
     if (reduced || !showIndicator) return;
+    const hovered = hoveredRef.current;
     const t = clock.elapsedTime * pulse + phase;
     if (ringRef.current) {
       ringRef.current.rotation.z = t * 0.5;
@@ -68,13 +76,29 @@ export function Hotspot3D({
     }
     if (orbRef.current) {
       orbRef.current.position.y = 0.15 + Math.sin(t * 1.4) * 0.08;
-      orbRef.current.rotation.y += 0.004 * pulse;
+      orbRef.current.rotation.y += 0.003 * pulse;
     }
     if (coreRef.current) {
       const material = coreRef.current.material as THREE.MeshStandardMaterial;
       material.emissiveIntensity = ((hovered ? 2.4 : 1.5) + Math.sin(t * 3) * 0.3) * palette.glow;
     }
   });
+
+  const setHover = (hovered: boolean) => {
+    hoveredRef.current = hovered;
+    if (ringMatRef.current) {
+      ringMatRef.current.emissiveIntensity = (hovered ? 2.4 : 1.4) * palette.glow;
+    }
+    if (ring2MatRef.current) ring2MatRef.current.opacity = hovered ? 0.85 : 0.5;
+    if (haloMatRef.current) {
+      haloMatRef.current.opacity = (hovered ? 0.34 : 0.22) * palette.glow;
+    }
+    if (coreRef.current) {
+      (coreRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        (hovered ? 2.4 : 1.5) * palette.glow;
+    }
+    requestWorldFrame();
+  };
 
   const onClick = (event: ThreeEvent<MouseEvent>) => {
     if (disabled) return;
@@ -85,12 +109,12 @@ export function Hotspot3D({
   const onOver = (event: ThreeEvent<PointerEvent>) => {
     if (disabled) return;
     event.stopPropagation();
-    if (showIndicator) setHovered(true);
+    if (showIndicator) setHover(true);
     document.body.style.cursor = "pointer";
   };
 
   const onOut = () => {
-    if (showIndicator) setHovered(false);
+    if (showIndicator) setHover(false);
     document.body.style.cursor = "";
   };
 
@@ -121,9 +145,10 @@ export function Hotspot3D({
           <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
             <torusGeometry args={[radius * 0.85, 0.035, 8, 36]} />
             <meshStandardMaterial
+              ref={ringMatRef}
               color={orbAccent}
               emissive={orbAccent}
-              emissiveIntensity={(hovered ? 2.4 : 1.4) * palette.glow}
+              emissiveIntensity={1.4 * palette.glow}
               toneMapped={false}
             />
           </mesh>
@@ -132,9 +157,10 @@ export function Hotspot3D({
           <mesh ref={ring2Ref} rotation={[Math.PI / 2.6, 0, 0]} position={[0, 0.1, 0]}>
             <torusGeometry args={[radius * 0.62, 0.018, 6, 28]} />
             <meshBasicMaterial
+              ref={ring2MatRef}
               color={orbAccent}
               transparent
-              opacity={hovered ? 0.85 : 0.5}
+              opacity={0.5}
               depthWrite={false}
               toneMapped={false}
             />
@@ -167,13 +193,20 @@ export function Hotspot3D({
             </mesh>
           </group>
 
-          <pointLight
-            position={[0, 0.4, 0]}
-            color={accent}
-            intensity={(hovered ? 5 : 3) * (palette.isLight ? 0.7 : 1)}
-            distance={5}
-            decay={2}
-          />
+          {/* Additive halo instead of a real point light: same presence, no
+              per-fragment light cost across the whole scene. */}
+          <sprite position={[0, 0.18, 0]} scale={[radius * 3.4, radius * 3.4, 1]}>
+            <spriteMaterial
+              ref={haloMatRef}
+              map={shadowTex}
+              color={orbAccent}
+              transparent
+              opacity={0.22 * palette.glow}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              toneMapped={false}
+            />
+          </sprite>
         </>
       ) : null}
       {children}
@@ -239,8 +272,9 @@ const PITCH_MIN = -0.65;
 const PITCH_MAX = 1.25;
 /** Input easing — accelerates in and glides to a stop on release. */
 const INPUT_EASE = 16;
-/** How fast the camera eases toward the steered target (matches idle feel). */
-const FOLLOW_EASE = 10;
+/** Faster response while the finger/mouse is down; gentler settle afterwards. */
+const FOLLOW_EASE_STEER = 18;
+const FOLLOW_EASE_SETTLE = 7.5;
 
 /**
  * Simple camera state machine: lerp between named poses, with a drag-steering
@@ -258,6 +292,7 @@ export function CameraDirector({
   reduced = false,
   allowSteering = true,
   suspended = false,
+  baseFov = 44,
   onPoseComplete,
 }: {
   pose: string;
@@ -266,11 +301,13 @@ export function CameraDirector({
   allowSteering?: boolean;
   /** Yield camera control to a scripted cinematic (gate entry, etc.). */
   suspended?: boolean;
+  /** Authored vertical FOV for this scene — drives the entrance pull-back. */
+  baseFov?: number;
   onPoseComplete?: (pose: string) => void;
 }) {
-  const { camera } = useThree();
-  const isMobile = useIsMobile();
+  const { camera, size } = useThree();
   const prefersReduced = usePrefersReducedMotion();
+  const isMobile = useIsMobile();
   const isReduced = reduced || prefersReduced;
   const targetPos = useMemo(() => new THREE.Vector3(), []);
   const targetLook = useMemo(() => new THREE.Vector3(), []);
@@ -289,6 +326,9 @@ export function CameraDirector({
     s.ix = 0;
     s.iy = 0;
     resetZoom();
+    // Start the pose transition even when the demand loop is idle (reduced
+    // motion, an open vantage button, or a cached route being revisited).
+    requestWorldFrame();
   }, [pose]);
 
   useFrame((_, delta) => {
@@ -314,7 +354,13 @@ export function CameraDirector({
     // authored space instead of punching through its geometry.
     const [lx, ly, lz] = config.lookAt;
     offset.set(config.position[0] - lx, config.position[1] - ly, config.position[2] - lz);
-    const baseR = (offset.length() || 1) * (isMobile && pose === "entrance" ? 2.2 : 1);
+    // The entrance shot has to fit the whole doorway; on narrow windows the
+    // aspect-aware FOV can only partially compensate, so dolly back by the
+    // framing that is still missing. Interior poses keep their authored radius.
+    const pull = pose === "entrance"
+      ? entrancePullScale(baseFov, size.width / Math.max(1, size.height), isMobile)
+      : 1;
+    const baseR = (offset.length() || 1) * pull;
     const basePhi = Math.asin(THREE.MathUtils.clamp(offset.y / baseR, -1, 1));
     s.pitch = THREE.MathUtils.clamp(s.pitch, PITCH_MIN - basePhi, PITCH_MAX - basePhi);
     const baseTheta = Math.atan2(offset.x, offset.z);
@@ -334,10 +380,20 @@ export function CameraDirector({
       camera.position.copy(targetPos);
       currentLook.copy(targetLook);
     } else {
-      camera.position.lerp(targetPos, 1 - Math.exp(-dt * FOLLOW_EASE));
-      currentLook.lerp(targetLook, 1 - Math.exp(-dt * FOLLOW_EASE));
+      const steering = allowSteering && Math.abs(input.x) + Math.abs(input.y) > 0.005;
+      const follow = steering ? FOLLOW_EASE_STEER : FOLLOW_EASE_SETTLE;
+      camera.position.lerp(targetPos, 1 - Math.exp(-dt * follow));
+      currentLook.lerp(targetLook, 1 - Math.exp(-dt * follow));
     }
     camera.lookAt(currentLook);
+
+    // Keep the on-demand loop alive exactly until the shot (and released
+    // steering momentum) has settled, then let it sleep again.
+    const settling =
+      camera.position.distanceToSquared(targetPos) > 1e-6 ||
+      currentLook.distanceToSquared(targetLook) > 1e-6 ||
+      Math.abs(s.ix) + Math.abs(s.iy) > 1e-4;
+    if (settling) requestWorldFrame();
 
     if (
       onPoseComplete &&

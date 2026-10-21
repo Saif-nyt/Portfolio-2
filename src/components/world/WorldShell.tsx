@@ -20,8 +20,7 @@ import { WorldMapOverlay } from "@/components/world/WorldMapOverlay";
 import { WorldNavSurface } from "@/components/world/WorldNavSurface";
 import { LOCATION_BY_ID, type LocationId } from "@/lib/world/registry";
 import { levelFromXp, progressActions, useProgress } from "@/lib/world/progress";
-import { detectQuality, useWorldState, worldActions } from "@/lib/world/store";
-import { MODE_CHANGE_EVENT, readStoredMode, setStoredMode } from "@/lib/mode";
+import { useWorldState, worldActions } from "@/lib/world/store";import { MODE_CHANGE_EVENT, readStoredMode, setStoredMode } from "@/lib/mode";
 import { readJson, writeJson } from "@/lib/storage";
 
 interface WorldShellProps {
@@ -150,14 +149,17 @@ export function WorldShell({
   const webglOk = webglState === true;
   const exploreMode = useSyncExternalStore(subscribeModeChange, readExploreMode, () => true);
 
-  // Quality tier is detected once when the shell first mounts.
-  useEffect(() => {
-    worldActions.setQuality(detectQuality());
-  }, []);
-
   // Record the visit for progression (first-time visits award XP + feed quests).
   useEffect(() => {
     progressActions.visitLocation(locationId);
+  }, [locationId]);
+
+  // Walking is a Home-only mode. Arriving at another location always returns
+  // that shell to its orbit camera, even when the previous shell was removed
+  // before its own route-change cleanup could run.
+  useEffect(() => {
+    worldActions.setWalkMode(false);
+    worldActions.setNearby(null);
   }, [locationId]);
 
   // Travel (map, strip, link) swaps the shell entirely — close stale overlays
@@ -169,6 +171,7 @@ export function WorldShell({
     if (prevPathname.current === pathname) return;
     prevPathname.current = pathname;
     if (worldEntry === "entering") worldActions.completeWorldEntry();
+    worldActions.setWalkMode(false);
     worldActions.closePanel();
     worldActions.toggleMap(false);
     worldActions.closeCodex();
@@ -333,6 +336,7 @@ export function WorldShell({
                   <li key={entry.id}>
                     <Link
                       href={entry.href}
+                      prefetch={false}
                       className="flex min-h-11 items-center whitespace-nowrap rounded-full px-3.5 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
                     >
                       {LOCATION_NAV_LABELS[entry.id] ?? entry.title}

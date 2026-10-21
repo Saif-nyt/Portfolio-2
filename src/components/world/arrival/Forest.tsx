@@ -221,7 +221,7 @@ function Mushrooms({ quality, zones }: { quality: Tier; zones: Zone[] }) {
   }, []);
 
   const items = useMemo(
-    () => scatter(quality === "high" ? 64 : 26, 71.3, [-9.5, 9.5, -5.5, 5.5], 18, 1.4, zones, 0.5),
+    () => scatter(quality === "high" ? 40 : 16, 71.3, [-9.5, 9.5, -5.5, 5.5], 14, 1.2, zones, 0.5),
     [quality, zones],
   );
 
@@ -298,7 +298,7 @@ function Mushrooms({ quality, zones }: { quality: Tier; zones: Zone[] }) {
     <group>
       <instancedMesh ref={caps} args={[capGeo, capMat, items.length]} frustumCulled={false} />
       <instancedMesh ref={stems} args={[stemGeo, undefined, items.length]} frustumCulled={false}>
-        <meshStandardMaterial color="#c8d8cf" roughness={0.7} emissive="#2f6f5c" emissiveIntensity={0.25} />
+        <meshStandardMaterial color="#63796e" roughness={0.78} emissive="#2f6f5c" emissiveIntensity={0.16} />
       </instancedMesh>
     </group>
   );
@@ -487,13 +487,24 @@ function Mist({ quality, zones }: { quality: Tier; zones: Zone[] }) {
   );
 }
 
-export function Forest({ quality, reduced, zones = DEFAULT_ZONES }: { quality: Tier; reduced: boolean; zones?: Zone[] }) {
+export function Forest({
+  quality,
+  reduced,
+  zones = DEFAULT_ZONES,
+  grass = true,
+}: {
+  quality: Tier;
+  reduced: boolean;
+  zones?: Zone[];
+  /** Home supplies a world-scale grass field, so its near-field copy is off. */
+  grass?: boolean;
+}) {
   const grassZones = useMemo(() => zones, [zones]);
 
   if (reduced) {
     return (
       <group>
-        <GrassField quality={quality} zones={grassZones} />
+        {grass ? <GrassField quality={quality} zones={grassZones} /> : null}
         <Rocks quality={quality} zones={grassZones} />
       </group>
     );
@@ -501,23 +512,16 @@ export function Forest({ quality, reduced, zones = DEFAULT_ZONES }: { quality: T
 
   return (
     <group>
-      <GrassField quality={quality} zones={grassZones} />
+      {grass ? <GrassField quality={quality} zones={grassZones} /> : null}
       <Ferns quality={quality} zones={grassZones} />
       <Mushrooms quality={quality} zones={grassZones} />
       <Rocks quality={quality} zones={grassZones} />
       <Drifters
-        count={quality === "high" ? 240 : 90}
+        count={quality === "high" ? 74 : 28}
         seedBase={3.1}
         yMin={0.1}
         yMax={0.5}
-        cfg={{ color: "#9be8d6", size: 1.5, rise: 0.22, wander: 0.5, bob: 0.25, blink: 0.9, opacity: 0.55, react: 0.35 }}
-      />
-      <Drifters
-        count={quality === "high" ? 42 : 20}
-        seedBase={57.7}
-        yMin={0.8}
-        yMax={2.6}
-        cfg={{ color: "#c8ff9e", size: 2.6, rise: 0, wander: 1.3, bob: 0.5, blink: 2.1, opacity: 0.85, react: 0.15 }}
+        cfg={{ color: "#9be8d6", size: 1.5, rise: 0.22, wander: 0.5, bob: 0.25, blink: 0.9, opacity: 0.42, react: 0.35 }}
       />
       <Mist quality={quality} zones={grassZones} />
     </group>

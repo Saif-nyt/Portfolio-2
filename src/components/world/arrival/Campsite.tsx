@@ -37,7 +37,7 @@ export function Campsite({ quality, reduced }: CampsiteProps) {
         <meshStandardMaterial color={mixHex(palette.floorDeep, "#6b5a3f", 0.5)} roughness={1} metalness={0} />
       </mesh>
 
-      <Cabin position={CABIN_POS} rotationY={CABIN_ROT} reduced={reduced} quality={quality} />
+      <Cabin position={CABIN_POS} rotationY={CABIN_ROT} reduced={reduced} />
       <Campfire position={FIRE_POS} quality={quality} reduced={reduced} />
 
       {seats.map((s, i) => (

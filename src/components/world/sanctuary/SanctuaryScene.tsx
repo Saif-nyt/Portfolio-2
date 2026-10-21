@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
@@ -14,6 +14,7 @@ import { Floater, OrbitRing } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { useArticlesResource } from "@/lib/world/content-hooks";
 import { worldActions } from "@/lib/world/store";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#ffd36b";
@@ -84,7 +85,19 @@ export function SanctuaryScene() {
   const router = useRouter();
   const { data: articles, status, reload } = useArticlesResource();
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
-  const [inside, setInside] = useState(false);
+  // Crossing the threshold waits for real door clearance (or a skip), so the
+  // camera can never be caught inside a half-open leaf.
+  const doorway = useDoorwayEntry();
+  const { entered: inside } = doorway;
+  const enterLibrary = useCallback(() => {
+    if (doorway.open) return;
+    setPose("overview");
+    doorway.begin();
+  }, [doorway]);
+  const exitLibrary = useCallback(() => {
+    doorway.exit();
+    setPose("overview");
+  }, [doorway]);
   const palette = useSceneTheme({ bg: "#e4ddc8", fog: "#ece6d5" });
 
   const visible = articles.slice(0, 6);
@@ -104,13 +117,13 @@ export function SanctuaryScene() {
         animate
       >
         <LightRig fillColor={ACCENT} intensity={0.78} />
-        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} baseFov={44} />
         <DistantHorizon accent={ACCENT} scale={1.05} />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.13} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the library */}
-        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={inside} />
+        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
 
         {/* Sanctuary floor with concentric rings */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -196,7 +209,13 @@ export function SanctuaryScene() {
         ) : null}
       </div>
 
-      <EntrancePrompt label="the Library" open={inside} onEnter={() => setInside(true)} />
+      <EntrancePrompt
+        label="the Library"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterLibrary}
+        onSkip={doorway.skip}
+      />
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
@@ -212,7 +231,7 @@ export function SanctuaryScene() {
           ))}
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={exitLibrary}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple

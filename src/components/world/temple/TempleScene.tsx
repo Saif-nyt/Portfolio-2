@@ -24,6 +24,7 @@ import {
 } from "@/components/world/temple/TempleGeometry";
 import { worldActions } from "@/lib/world/store";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 
 const ACCENT = "#8fd8ff";
@@ -56,25 +57,25 @@ export function TempleScene() {
   const router = useRouter();
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme({ bg: "#e1dccb", fog: "#e9e4d4" });
-  const [pose, setPose] = useState<keyof typeof POSES>("approach");
-  const [doorsOpen, setDoorsOpen] = useState(false);
-  const [inside, setInside] = useState(false);
+  // The camera pose is *derived* from the doorway state rather than chained
+  // through `onPoseComplete` callbacks — a dropped completion event used to
+  // strand the visitor on "Entering the temple…" forever.
+  //   outside → approach · opening → threshold (wait with the doors) · inside → pose
+  const [pose, setPose] = useState<keyof typeof POSES>("interior");
+  const doorway = useDoorwayEntry();
+  const inside = doorway.entered;
+  const activePose = doorway.entered ? pose : doorway.open ? "threshold" : "approach";
 
-  const handlePoseComplete = useCallback((completedPose: string) => {
-    if (completedPose === "threshold") {
-      setPose("interior");
-    } else if (completedPose === "interior") {
-      setInside(true);
-    }
-  }, []);
+  const enterTemple = useCallback(() => {
+    if (doorway.open) return;
+    doorway.begin();
+  }, [doorway]);
 
-  const exitTemple = () => {
-    setInside(false);
-    setDoorsOpen(false);
-    setPose("approach");
-  };
-
-  const entering = pose === "threshold" || (pose === "interior" && !inside);
+  const exitTemple = useCallback(() => {
+    doorway.exit();
+    // Reset so the next visit always opens on the central dais.
+    setPose("interior");
+  }, [doorway]);
 
   return (
     <SceneScope accent={ACCENT}>
@@ -88,11 +89,11 @@ export function TempleScene() {
       >
         <LightRig fillColor={ACCENT} intensity={1.35} />
         <CameraDirector
-          pose={pose}
+          pose={activePose}
           poses={POSES}
           reduced={reduced}
           allowSteering={inside}
-          onPoseComplete={handlePoseComplete}
+          baseFov={44}
         />
         <DistantHorizon accent={ACCENT} scale={1.15} />
         <AmbientMotes color={palette.mote} radius={5.5} height={4} count={70} size={0.12} />
@@ -120,7 +121,7 @@ export function TempleScene() {
         <Pillar position={[4, 0, -3]} height={3.6} accent={ACCENT} variant={6} />
 
         {/* The great doorway — the temple's entrance */}
-        <TempleDoor open={doorsOpen} accent={ACCENT} />
+        <TempleDoor open={doorway.open} accent={ACCENT} onOpened={doorway.opened} />
         <pointLight position={[0, 2, 1.2]} intensity={palette.isLight ? 3 : 6} distance={9} decay={2} color={ACCENT} />
 
         {/* ---------- Interactive objects (interior) ---------- */}
@@ -234,17 +235,9 @@ export function TempleScene() {
       </div>
 
       {/* ---------- DOM interaction layer ---------- */}
-      {!inside && !entering ? (
+      {!inside && !doorway.open ? (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-28 sm:pb-24">
-          <button
-            type="button"
-            onClick={() => {
-              setInside(false);
-              setDoorsOpen(true);
-              setPose("threshold");
-            }}
-            className="btn-primary pointer-events-auto"
-          >
+          <button type="button" onClick={enterTemple} className="btn-primary pointer-events-auto">
             Enter the Temple
           </button>
         </div>
@@ -289,8 +282,17 @@ export function TempleScene() {
           </Link>
         </div>
       ) : (
-        <div role="status" className="pointer-events-none absolute inset-x-0 bottom-28 z-20 text-center font-mono text-xs tracking-[0.2em] text-ink uppercase">
-          Entering the temple…
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-col items-center gap-2 text-center sm:bottom-28">
+          <div role="status" className="font-mono text-xs tracking-[0.2em] text-ink uppercase">
+            Entering the temple…
+          </div>
+          <button
+            type="button"
+            onClick={doorway.skip}
+            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+          >
+            Skip wait
+          </button>
         </div>
       )}
     </SceneScope>

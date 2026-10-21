@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
@@ -12,6 +12,7 @@ import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
 import { Floater, OrbitRing, RiseBeam } from "@/components/world/cinematics";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import { worldActions } from "@/lib/world/store";
+import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { SITE } from "@/lib/site";
 
@@ -86,7 +87,18 @@ function CommPillar({
  */
 export function NexusScene() {
   const [pose, setPose] = useState<keyof typeof POSES>("overview");
-  const [inside, setInside] = useState(false);
+  // Hold the exterior shot until the leaves actually clear the doorway.
+  const doorway = useDoorwayEntry();
+  const { entered: inside } = doorway;
+  const enterNexus = useCallback(() => {
+    if (doorway.open) return;
+    setPose("overview");
+    doorway.begin();
+  }, [doorway]);
+  const exitNexus = useCallback(() => {
+    doorway.exit();
+    setPose("overview");
+  }, [doorway]);
   const palette = useSceneTheme({ bg: "#ded4d6", fog: "#e8dfe0" });
 
   return (
@@ -99,13 +111,13 @@ export function NexusScene() {
         animate
       >
         <LightRig fillColor={ACCENT} intensity={0.78} />
-        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} />
+        <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} baseFov={44} />
         <DistantHorizon accent={ACCENT} scale={1.1} />
         <AmbientMotes color={palette.mote} radius={6.5} height={4.5} count={80} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the nexus */}
-        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={inside} />
+        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
 
         {/* Platform */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -192,7 +204,13 @@ export function NexusScene() {
         </p>
       </div>
 
-      <EntrancePrompt label="the Nexus" open={inside} onEnter={() => setInside(true)} />
+      <EntrancePrompt
+        label="the Nexus"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterNexus}
+        onSkip={doorway.skip}
+      />
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
@@ -208,7 +226,7 @@ export function NexusScene() {
           ))}
           <button
             type="button"
-            onClick={() => setInside(false)}
+            onClick={exitNexus}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-ink uppercase transition hover:text-accent"
           >
             Exit temple
