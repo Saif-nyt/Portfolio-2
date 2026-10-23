@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import type { ActiveObject } from "@/lib/world/store";
 import { worldActions } from "@/lib/world/store";
 import { progressActions } from "@/lib/world/progress";
+import { withVars } from "@/lib/styles";
 
 interface HoloPanelProps {
   object: ActiveObject | null;
@@ -21,6 +22,9 @@ interface HoloPanelProps {
 export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Element that had focus before the panel opened — restored on close so
+  // keyboard users aren't dropped back onto <body>.
+  const restoreRef = useRef<HTMLElement | null>(null);
 
   // Opening any object counts as a discovery — the explorer has now inspected
   // it. Awards XP once per id and feeds survey/collection achievements.
@@ -31,6 +35,8 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
 
   useEffect(() => {
     if (!object) return;
+    restoreRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     // Move focus into the panel for keyboard users.
     closeRef.current?.focus();
 
@@ -58,7 +64,10 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
     };
 
     document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      restoreRef.current?.focus();
+    };
   }, [object]);
 
   return (
@@ -77,7 +86,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
             type="button"
             aria-label="Close panel"
             onClick={() => worldActions.closePanel()}
-            className="pointer-events-auto absolute inset-0 cursor-default bg-black/45 backdrop-blur-[2px]"
+            className="pointer-events-auto absolute inset-0 cursor-default bg-[var(--veil)] backdrop-blur-[2px]"
             tabIndex={-1}
           />
           <motion.div
@@ -89,16 +98,16 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            className="panel pointer-events-auto relative z-10 flex max-h-[78dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-3xl p-6 sm:p-7"
-            style={{ borderColor: `${accent}55`, boxShadow: `0 0 60px -18px ${accent}66` }}
+            className="panel world-scope pointer-events-auto relative z-10 flex max-h-[78dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-3xl p-6 sm:p-7"
+            style={withVars(
+              { borderColor: `${accent}55`, boxShadow: `0 0 60px -18px ${accent}66` },
+              { "--loc-accent": accent },
+            )}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-1.5">
                 {object.eyebrow ? (
-                  <p
-                    className="font-mono text-[0.62rem] tracking-[0.26em] uppercase"
-                    style={{ color: accent }}
-                  >
+                  <p className="font-mono text-[0.62rem] tracking-[0.26em] uppercase" style={{ color: "var(--loc-accent-text)" }}>
                     {object.eyebrow}
                   </p>
                 ) : null}
@@ -124,8 +133,8 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
 
             {object.bullets && object.bullets.length > 0 ? (
               <ul className="flex flex-col gap-2">
-                {object.bullets.map((bullet) => (
-                  <li key={bullet} className="flex items-start gap-2.5 text-sm leading-relaxed text-ink/90">
+                {object.bullets.map((bullet, index) => (
+                  <li key={`${index}-${bullet}`} className="flex items-start gap-2.5 text-sm leading-relaxed text-ink/90">
                     <span
                       aria-hidden="true"
                       className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
@@ -139,13 +148,14 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
 
             {object.actions && object.actions.length > 0 ? (
               <div className="mt-1 flex flex-wrap gap-2.5">
-                {object.actions.map((action) => {
+                {object.actions.map((action, index) => {
                   // Hide malformed actions instead of rendering dead controls.
                   if (!action.href && !action.onClick) return null;
 
                   const className = action.href && !action.onClick ? "btn-primary" : "btn-ghost";
                   const content = action.label;
                   const isInternal = Boolean(action.href && !action.external && action.href.startsWith("/"));
+                  const actionKey = `${index}-${action.label}`;
 
                   // Callback actions close the panel first so the visitor is
                   // never left staring at a stale dialog over the result
@@ -153,7 +163,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                   if (action.onClick && !action.href) {
                     return (
                       <button
-                        key={action.label}
+                        key={actionKey}
                         type="button"
                         onClick={() => {
                           worldActions.closePanel();
@@ -168,7 +178,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                   if (isInternal) {
                     return (
                       <Link
-                        key={action.label}
+                        key={actionKey}
                         href={action.href!}
                         className={className}
                         onClick={() => {
@@ -182,7 +192,7 @@ export function HoloPanel({ object, accent = "#63f5e7" }: HoloPanelProps) {
                   }
                   return (
                     <a
-                      key={action.label}
+                      key={actionKey}
                       href={action.href}
                       target={action.external ? "_blank" : undefined}
                       rel={action.external ? "noopener noreferrer" : undefined}

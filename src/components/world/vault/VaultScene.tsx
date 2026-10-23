@@ -19,8 +19,7 @@ import { progressActions, useProgress } from "@/lib/world/progress";
 import { worldActions } from "@/lib/world/store";
 import { useMediaQuery, usePrefersReducedMotion } from "@/lib/hooks";
 import { useDoorwayEntry } from "@/lib/world/doorway";
-import { useSceneTheme } from "@/lib/world/scene-theme";
-import { mixHex } from "@/lib/world/scene-theme";
+import { mixHex, useSceneTheme } from "@/lib/world/scene-theme";
 import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
 import { requestWorldFrame } from "@/lib/world/render-loop";
 import { PROJECT_KIND_LABELS } from "@/data/projects";
@@ -158,7 +157,7 @@ function Artifact({
 
 function kindLabel(project: ProjectSummary): string {
   const kind = project.kind as keyof typeof PROJECT_KIND_LABELS | undefined;
-  return kind ? PROJECT_KIND_LABELS[kind] : "Case Study";
+  return (kind ? PROJECT_KIND_LABELS[kind] : undefined) ?? "Case Study";
 }
 
 /**
@@ -275,27 +274,37 @@ export function VaultScene() {
   }, [doorway]);
 
   const hasArtifacts = status === "ready" && count > 0;
-  const caseFileFor = (project: ProjectSummary, index: number, rarity: "shard" | "artifact" | "relic") => ({
-    ...artifactDetails(project, index),
-    actions: [
-      ...(progress.collected.includes(project.slug)
-        ? []
-        : [
+  // Memoized alongside `visible` so pose/doorway changes don't rebuild every
+  // panel object (and so Hotspot3D receives a stable `object` identity).
+  const caseFiles = useMemo(
+    () =>
+      visible.map((project, index) => {
+        const rarity = artifactFrom(project, index).rarity;
+        return {
+          ...artifactDetails(project, index),
+          actions: [
+            ...(progress.collected.includes(project.slug)
+              ? []
+              : [
+                  {
+                    label: `Collect · ${rarity}`,
+                    onClick: () => progressActions.collect(project.slug, rarity),
+                  },
+                ]),
             {
-              label: `Collect · ${rarity}`,
-              onClick: () => progressActions.collect(project.slug, rarity),
+              label: "Open case file",
+              onClick: () => router.push(`/work/${project.slug}`),
             },
-          ]),
-      {
-        label: "Open case file",
-        onClick: () => router.push(`/work/${project.slug}`),
-      },
-      {
-        label: "Browse all projects",
-        onClick: () => worldActions.openCodex("work"),
-      },
-    ],
-  });
+            {
+              label: "Browse all projects",
+              onClick: () => worldActions.openCodex("work"),
+            },
+          ],
+        };
+      }),
+    // `progress.collected` identity changes only when collection state does.
+    [visible, progress.collected, router],
+  );
 
   return (
     <SceneScope accent={ACCENT}>
@@ -321,12 +330,18 @@ export function VaultScene() {
           position={[0, 0, 13]}
           accent={ACCENT}
           open={doorway.open}
+          snap={doorway.snapped}
           onOpened={doorway.opened}
         />
 
         {/* Vault floor — sized to hold the widened portrait arc */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[portrait ? 11.5 : 9, portrait ? 56 : 48]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
+        </mesh>
+        {/* Walkway bridging the floor disc to the entrance threshold */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 11.6]} receiveShadow>
+          <planeGeometry args={[4.2, 5.6]} />
           <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Central vault ring */}
@@ -361,7 +376,7 @@ export function VaultScene() {
                 // puts the pedestals further from the camera.
                 radius={portrait ? 1.05 : 0.8}
                 accent={accent}
-                object={caseFileFor(project, i, artifact.rarity)}
+                object={caseFiles[i]}
                 showIndicator={false}
                 onHoverChange={(hovered) => {
                   if (hovered) {
@@ -379,7 +394,7 @@ export function VaultScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-32 z-20 flex flex-col items-center px-6 text-center sm:top-36">
         <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           ARTIFACT VAULT · PROJECTS
         </p>
@@ -426,14 +441,22 @@ export function VaultScene() {
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
           {hasArtifacts
-            ? (["overview", "close", "left", "right"] as const).map((p) => (
+            ? ([
+                ["overview", "Overview"],
+                ["close", "Close-up"],
+                ["left", "Left wing"],
+                ["right", "Right wing"],
+              ] as const).map(([id, label]) => (
                 <button
-                  key={p}
+                  key={id}
                   type="button"
-                  onClick={() => setPose(p)}
-                  className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+                  aria-pressed={pose === id}
+                  onClick={() => setPose(id)}
+                  className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] uppercase transition ${
+                    pose === id ? "text-accent" : "text-dim hover:text-accent"
+                  }`}
                 >
-                  {p}
+                  {label}
                 </button>
               ))
             : null}
@@ -441,8 +464,7 @@ export function VaultScene() {
             <button
               type="button"
               onClick={() => worldActions.openCodex("work")}
-              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] uppercase transition hover:text-accent"
-              style={{ color: ACCENT }}
+              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.6rem] tracking-[0.16em] text-accent uppercase transition hover:text-ink"
             >
               Artifact index
             </button>

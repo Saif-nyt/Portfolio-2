@@ -12,6 +12,12 @@ export interface DoorwayEntry {
   opening: boolean;
   /** Camera may cross the threshold and destination controls come back. */
   entered: boolean;
+  /**
+   * True once the visitor (or the watchdog) skipped the wait. The door meshes
+   * read this and snap their leaves fully open, so the camera never crosses
+   * through a half-open leaf geometry.
+   */
+  snapped: boolean;
   begin: () => void;
   /** Clearance event fired by the door mesh itself. */
   opened: () => void;
@@ -35,6 +41,7 @@ export interface DoorwayEntry {
  */
 export function useDoorwayEntry(watchdogMs = 4000): DoorwayEntry {
   const [phase, setPhase] = useState<DoorwayPhase>("outside");
+  const [snapped, setSnapped] = useState(false);
   const phaseRef = useRef<DoorwayPhase>("outside");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,10 +61,16 @@ export function useDoorwayEntry(watchdogMs = 4000): DoorwayEntry {
 
   const begin = useCallback(() => {
     if (phaseRef.current !== "outside") return;
+    setSnapped(false);
     transition("opening");
     timer.current = setTimeout(() => {
       timer.current = null;
-      if (phaseRef.current === "opening") transition("inside");
+      if (phaseRef.current === "opening") {
+        // Recovery path: snap the leaves so the admitted camera never meets
+        // a half-open door.
+        setSnapped(true);
+        transition("inside");
+      }
     }, watchdogMs);
   }, [transition, watchdogMs]);
 
@@ -67,8 +80,16 @@ export function useDoorwayEntry(watchdogMs = 4000): DoorwayEntry {
     transition("inside");
   }, [clearWatchdog, transition]);
 
+  const skip = useCallback(() => {
+    if (phaseRef.current !== "opening") return;
+    setSnapped(true);
+    clearWatchdog();
+    transition("inside");
+  }, [clearWatchdog, transition]);
+
   const exit = useCallback(() => {
     clearWatchdog();
+    setSnapped(false);
     transition("outside");
   }, [clearWatchdog, transition]);
 
@@ -77,9 +98,10 @@ export function useDoorwayEntry(watchdogMs = 4000): DoorwayEntry {
     open: phase !== "outside",
     opening: phase === "opening",
     entered: phase === "inside",
+    snapped,
     begin,
     opened,
-    skip: opened,
+    skip,
     exit,
   };
 }

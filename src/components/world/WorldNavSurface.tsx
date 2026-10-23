@@ -134,6 +134,12 @@ export function WorldNavSurface({
       if (pointers.has(event.pointerId)) {
         pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       }
+      // An overlay opened mid-gesture: abandon the drag so the world never
+      // keeps orbiting behind the panel that just appeared.
+      if (blockedRef.current) {
+        if (dragId !== -1 || pinching) end();
+        return;
+      }
       if (pinching) {
         if (pointers.size < 2) return;
         const dist = pointerDistance(pointers);

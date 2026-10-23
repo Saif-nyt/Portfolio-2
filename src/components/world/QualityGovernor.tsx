@@ -17,7 +17,7 @@ const WARMUP_SECONDS = 2.5;
  * slow frames while shaders compile.
  */
 export function QualityGovernor() {
-  const { quality, activeObject, mapOpen, codex } = useWorldState();
+  const { quality, activeObject, mapOpen, codex, collectionOpen } = useWorldState();
   const frames = useRef(0);
   const elapsed = useRef(0);
   const badWindows = useRef(0);
@@ -25,7 +25,7 @@ export function QualityGovernor() {
 
   useFrame((_, rawDelta) => {
     if (quality !== "high") return;
-    if (activeObject || mapOpen || codex !== null) return;
+    if (activeObject || mapOpen || codex !== null || collectionOpen) return;
     if (rawDelta > 0.25) return;
     if (warmup.current < WARMUP_SECONDS) {
       warmup.current += rawDelta;

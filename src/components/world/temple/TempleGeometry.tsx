@@ -168,7 +168,15 @@ export function Rubble({ origin = [0, 0, 0], count = 12, spread = 5 }: { origin?
     mesh.instanceMatrix.needsUpdate = true;
   }, [count, origin, spread]);
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  // Imperative geometry/material are not auto-disposed by R3F; the material
+  // also changes with the theme palette, so each swap must release the old one.
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
 
   return <instancedMesh ref={ref} args={[geometry, material, count]} castShadow receiveShadow />;
 }
@@ -180,10 +188,13 @@ export function Rubble({ origin = [0, 0, 0], count = 12, spread = 5 }: { origin?
  */
 export function TempleDoor({
   open,
+  snap = false,
   accent = "#8fd8ff",
   onOpened,
 }: {
   open: boolean;
+  /** Skip/watchdog recovery: snap both leaves fully open in one frame. */
+  snap?: boolean;
   accent?: string;
   /**
    * Fires once, the first time both leaves pass ~86% of their swing — real
@@ -211,10 +222,11 @@ export function TempleDoor({
   });
   useEffect(() => {
     requestWorldFrame();
-  }, [open]);
+  }, [open, snap]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
+    const instant = reduced || snap;
     const spring = springRef.current;
     const changed = spring.open !== open;
     if (changed) {
@@ -225,8 +237,11 @@ export function TempleDoor({
     }
 
     const openingAngle = Math.PI * 0.43;
+    // Right leaf starts on a delay (skipped under reduced motion / snap so
+    // both leaves open together).
+    const rightStarted = open && (instant || spring.elapsed > 0.16);
     const leftTarget = open ? openingAngle : 0;
-    const rightTarget = open && spring.elapsed > 0.16 ? -openingAngle : 0;
+    const rightTarget = rightStarted ? -openingAngle : 0;
     const recessTarget = open ? 0 : 1;
     const left = leftRef.current;
     const right = rightRef.current;
@@ -249,8 +264,12 @@ export function TempleDoor({
       onOpenedRef.current?.();
     }
 
+    // The delayed right leaf must block rest: otherwise the demand loop falls
+    // asleep between the two leaves and the right one never opens at all.
+    const rightPending = open && !instant && spring.elapsed < 0.16;
     const atRest =
       !changed &&
+      !rightPending &&
       left &&
       right &&
       Math.abs(left.rotation.y - leftTarget) < 0.0015 &&
@@ -266,7 +285,7 @@ export function TempleDoor({
       target: number,
     ) => {
       if (!hinge) return;
-      if (reduced) {
+      if (instant) {
         hinge.rotation.y = target;
         spring[velocity] = 0;
         return;
@@ -284,11 +303,11 @@ export function TempleDoor({
     updateHinge(
       rightRef.current,
       "rightVelocity",
-      open && spring.elapsed > 0.16 ? -openingAngle : 0,
+      open && (instant || spring.elapsed > 0.16) ? -openingAngle : 0,
     );
     if (recessRef.current) {
       const opacity = open ? 0 : 1;
-      recessRef.current.opacity = reduced
+      recessRef.current.opacity = instant
         ? opacity
         : THREE.MathUtils.damp(recessRef.current.opacity, opacity, 2.1, dt);
     }
@@ -438,7 +457,13 @@ export function CarvedReliefs({ z = -6.72, y = 2.4, count = 7 }: { z?: number; y
     mesh.instanceMatrix.needsUpdate = true;
   }, [count, y, z]);
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
 
   return <instancedMesh ref={ref} args={[geometry, material, count]} receiveShadow />;
 }
@@ -466,7 +491,13 @@ export function TempleFloor({ width = 14, depth = 16 }: { width?: number; depth?
   );
 }
 
-/** Back wall with alcoves for the archive chambers. */
+/**
+ * Chamber enclosure. The great doorway sits at z=0: everything behind it
+ * (z<0) is interior; the approach (z>0) is open air. Side walls and the
+ * ceiling therefore cover only the interior half, and a front facade wraps
+ * the doorway so the entrance reads as a real threshold rather than a
+ * freestanding gate inside a three-sided box.
+ */
 export function TempleWalls() {
   return (
     <group>
@@ -475,19 +506,33 @@ export function TempleWalls() {
         <boxGeometry args={[14, 5, 0.5]} />
         <StoneMaterial tone="dark" weather={0.35} />
       </mesh>
-      {/* Left wall */}
-      <mesh position={[-7, 2.5, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.5, 5, 14]} />
+      {/* Left interior wall — stops at the doorway plane */}
+      <mesh position={[-7, 2.5, -3.5]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, 5, 7.5]} />
         <StoneMaterial tone="dark" weather={0.5} />
       </mesh>
-      {/* Right wall */}
-      <mesh position={[7, 2.5, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.5, 5, 14]} />
+      {/* Right interior wall — stops at the doorway plane */}
+      <mesh position={[7, 2.5, -3.5]} castShadow receiveShadow>
+        <boxGeometry args={[0.5, 5, 7.5]} />
         <StoneMaterial tone="dark" weather={0.25} />
       </mesh>
-      {/* Ceiling beam suggestion */}
-      <mesh position={[0, 5.1, 0]}>
-        <boxGeometry args={[14.2, 0.3, 14.2]} />
+      {/* Front facade flanking the great doorway */}
+      <mesh position={[-4.35, 2.5, 0]} castShadow receiveShadow>
+        <boxGeometry args={[5.3, 5, 0.5]} />
+        <StoneMaterial tone="dark" weather={0.4} />
+      </mesh>
+      <mesh position={[4.35, 2.5, 0]} castShadow receiveShadow>
+        <boxGeometry args={[5.3, 5, 0.5]} />
+        <StoneMaterial tone="dark" weather={0.3} />
+      </mesh>
+      {/* Facade cornice bridging over the doorway */}
+      <mesh position={[0, 4.7, 0]} castShadow receiveShadow>
+        <boxGeometry args={[3.4, 0.6, 0.6]} />
+        <StoneMaterial tone="light" weather={0.18} />
+      </mesh>
+      {/* Ceiling over the interior only */}
+      <mesh position={[0, 5.1, -3.5]}>
+        <boxGeometry args={[14.2, 0.3, 7.8]} />
         <StoneMaterial tone="dark" weather={0.2} />
       </mesh>
     </group>

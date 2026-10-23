@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
@@ -99,12 +99,18 @@ export function SanctuaryScene() {
   }, [doorway]);
   const palette = useSceneTheme({ bg: "#e4ddc8", fog: "#ece6d5" });
 
-  const visible = articles.slice(0, 6);
-  const positions: [number, number, number][] = visible.map((_, i) => {
-    const t = visible.length === 1 ? 0.5 : i / (visible.length - 1);
-    const angle = (t - 0.5) * Math.PI * 0.85;
-    return [Math.sin(angle) * 3.8, 1.4 + (i % 2) * 0.3, Math.cos(angle) * -1.8 - 0.8];
-  });
+  // Memoized so every pose/doorway change doesn't rebuild the arrays (and
+  // so Hotspot3D's position-identity memo stays stable across renders).
+  const visible = useMemo(() => articles.slice(0, 6), [articles]);
+  const positions = useMemo<[number, number, number][]>(
+    () =>
+      visible.map((_, i) => {
+        const t = visible.length === 1 ? 0.5 : i / (visible.length - 1);
+        const angle = (t - 0.5) * Math.PI * 0.85;
+        return [Math.sin(angle) * 3.8, 1.4 + (i % 2) * 0.3, Math.cos(angle) * -1.8 - 0.8];
+      }),
+    [visible],
+  );
 
   return (
     <SceneScope accent={ACCENT}>
@@ -122,11 +128,16 @@ export function SanctuaryScene() {
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the library */}
-        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
+        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} snap={doorway.snapped} onOpened={doorway.opened} />
 
         {/* Sanctuary floor with concentric rings */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[8, 48]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
+        </mesh>
+        {/* Walkway bridging the floor disc to the entrance threshold */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 10.2]} receiveShadow>
+          <planeGeometry args={[3.8, 5.6]} />
           <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -174,7 +185,7 @@ export function SanctuaryScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-32 z-20 flex flex-col items-center px-6 text-center sm:top-36">
         <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           KNOWLEDGE SANCTUARY · INSIGHTS
         </p>
@@ -218,14 +229,22 @@ export function SanctuaryScene() {
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-          {(["overview", "close", "left", "right"] as const).map((p) => (
+          {([
+            ["overview", "Overview"],
+            ["close", "Reading desk"],
+            ["left", "Left stack"],
+            ["right", "Right stack"],
+          ] as const).map(([id, label]) => (
             <button
-              key={p}
+              key={id}
               type="button"
-              onClick={() => setPose(p)}
-              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+              aria-pressed={pose === id}
+              onClick={() => setPose(id)}
+              className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] uppercase transition ${
+                pose === id ? "text-accent" : "text-dim hover:text-accent"
+              }`}
             >
-              {p}
+              {label}
             </button>
           ))}
           <button

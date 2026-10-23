@@ -60,14 +60,16 @@ function pickList<T>(data: unknown, key: string): T[] {
  * Shared client fetch with an explicit lifecycle so scenes can distinguish
  * "still loading", "loaded but empty" and "failed" instead of silently
  * rendering an empty room. `key` is the legacy collection key some endpoints
- * used before the `{ items }` shape.
+ * used before the `{ items }` shape. `enabled` (default true) defers the
+ * request until an overlay or scene actually needs the data.
  */
-function useResource<T>(url: string, key: string): Resource<T> {
+function useResource<T>(url: string, key: string, enabled = true): Resource<T> {
   const [data, setData] = useState<T[]>([]);
-  const [status, setStatus] = useState<ResourceStatus>("loading");
+  const [status, setStatus] = useState<ResourceStatus>(enabled ? "loading" : "ready");
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     fetch(url)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
@@ -82,7 +84,7 @@ function useResource<T>(url: string, key: string): Resource<T> {
     return () => {
       cancelled = true;
     };
-  }, [url, key, nonce]);
+  }, [url, key, nonce, enabled]);
 
   // Status flips back to "loading" from here (an event), never synchronously
   // inside the effect body — that would cascade renders.
@@ -94,8 +96,8 @@ function useResource<T>(url: string, key: string): Resource<T> {
   return { data, status, reload };
 }
 
-export function useProjectsResource(): Resource<ProjectSummary> {
-  return useResource<ProjectSummary>("/api/projects?limit=24", "projects");
+export function useProjectsResource(enabled = true): Resource<ProjectSummary> {
+  return useResource<ProjectSummary>("/api/projects?limit=24", "projects", enabled);
 }
 
 /** Convenience array-only view (kept for scenes that don't need status). */

@@ -17,6 +17,7 @@ import { worldActions } from "@/lib/world/store";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 const ACCENT = "#b39dff";
 const GROWTH_POSITIONS: Array<[number, number]> = [
@@ -268,10 +269,10 @@ const NODES: SkillNode[] = [
 /** A single glowing technology node with a slow pulse. */
 function SkillNodeMesh({
   node,
-  highlighted,
+  hoveredRef,
 }: {
   node: SkillNode;
-  highlighted: boolean;
+  hoveredRef: { current: boolean };
 }) {
   const ref = useRef<THREE.Group>(null);
   const shellRef = useRef<THREE.Mesh>(null);
@@ -296,7 +297,7 @@ function SkillNodeMesh({
   const highlightMix = useRef(0);
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
-    const target = highlighted ? 1 : 0;
+    const target = hoveredRef.current ? 1 : 0;
     highlightMix.current = glowDamp(highlightMix.current, target, delta, 10);
     const mix = highlightMix.current;
     if (ref.current) {
@@ -310,6 +311,7 @@ function SkillNodeMesh({
       shellRef.current.rotation.y += delta * 0.4;
       shellRef.current.rotation.x += delta * 0.14;
     }
+    if (Math.abs(target - mix) > 1e-3) requestWorldFrame();
   });
 
   return (
@@ -355,11 +357,41 @@ function ConnectionLines() {
     geo.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
     return geo;
   }, []);
+  // Imperative geometry is not auto-disposed by R3F on unmount.
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial color={palette.accent(ACCENT)} transparent opacity={palette.isLight ? 0.4 : 0.22} />
     </lineSegments>
+  );
+}
+
+/** A skill node and its hotspot, sharing one hover ref (no re-renders). */
+function SkillNodeEntry({ node }: { node: SkillNode }) {
+  const hoveredRef = useRef(false);
+  return (
+    <group>
+      <SkillNodeMesh node={node} hoveredRef={hoveredRef} />
+      <Hotspot3D
+        position={node.position}
+        radius={0.55}
+        accent={node.accent}
+        onHoverChange={(hovered) => {
+          hoveredRef.current = hovered;
+        }}
+        object={{
+          id: node.id,
+          eyebrow: node.panel.eyebrow,
+          title: node.panel.title,
+          body: node.panel.body,
+          bullets: node.panel.bullets,
+          actions: [
+            { label: "Open the full skills map", onClick: () => worldActions.openCodex("skills") },
+          ],
+        }}
+      />
+    </group>
   );
 }
 /**
@@ -399,7 +431,7 @@ export function ObservatoryScene() {
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the observatory */}
-        <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
+        <TempleEntrance position={[0, 0, 11.5]} accent={ACCENT} open={doorway.open} snap={doorway.snapped} onOpened={doorway.opened} />
 
         {/* Observatory floor: disc first, inlaid ring lifted a hair to avoid z-fighting */}
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -410,6 +442,11 @@ export function ObservatoryScene() {
           <ringGeometry args={[3.5, 5.5, 48]} />
           <meshStandardMaterial color={palette.stoneDark} emissive={palette.accent(ACCENT)} emissiveIntensity={0.15} side={THREE.DoubleSide} />
         </mesh>
+        {/* Walkway bridging the floor disc to the entrance threshold */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 8.6]} receiveShadow>
+          <planeGeometry args={[3.8, 7]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
+        </mesh>
 
         {/* Slowly counter-rotating instrument rings and a central light column */}
         <OrbitRing position={[0, 0.14, 0]} radius={4.5} color={ACCENT} speed={0.16} opacity={0.32} />
@@ -419,29 +456,12 @@ export function ObservatoryScene() {
         <ConnectionLines />
 
         {NODES.map((node) => (
-          <group key={node.id}>
-            <SkillNodeMesh node={node} highlighted={false} />
-            <Hotspot3D
-              position={node.position}
-              radius={0.55}
-              accent={node.accent}
-              object={{
-                id: node.id,
-                eyebrow: node.panel.eyebrow,
-                title: node.panel.title,
-                body: node.panel.body,
-                bullets: node.panel.bullets,
-                actions: [
-                  { label: "Open the full skills map", onClick: () => worldActions.openCodex("skills") },
-                ],
-              }}
-            />
-          </group>
+          <SkillNodeEntry key={node.id} node={node} />
         ))}
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-32 z-20 flex flex-col items-center px-6 text-center sm:top-36">
         <p className="font-mono text-[0.6rem] tracking-[0.28em] uppercase" style={{ color: "var(--loc-accent-text)" }}>
           HOLOGRAPHIC OBSERVATORY · SKILLS
         </p>
@@ -463,14 +483,22 @@ export function ObservatoryScene() {
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-          {(["overview", "core", "left", "right"] as const).map((p) => (
+          {([
+            ["overview", "Overview"],
+            ["core", "Constellation"],
+            ["left", "Left wing"],
+            ["right", "Right wing"],
+          ] as const).map(([id, label]) => (
             <button
-              key={p}
+              key={id}
               type="button"
-              onClick={() => setPose(p)}
-              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+              aria-pressed={pose === id}
+              onClick={() => setPose(id)}
+              className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] uppercase transition ${
+                pose === id ? "text-accent" : "text-dim hover:text-accent"
+              }`}
             >
-              {p}
+              {label}
             </button>
           ))}
           <button

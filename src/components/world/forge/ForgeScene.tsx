@@ -18,6 +18,7 @@ import { worldActions } from "@/lib/world/store";
 import { useDoorwayEntry } from "@/lib/world/doorway";
 import { useSceneTheme } from "@/lib/world/scene-theme";
 import { createRimGlowMaterial, glowDamp } from "@/lib/world/crisp-glow";
+import { requestWorldFrame } from "@/lib/world/render-loop";
 
 const ACCENT = "#ffb36b";
 const GROWTH_POSITIONS: Array<[number, number]> = [
@@ -49,7 +50,7 @@ interface Station {
 const STATIONS: Station[] = [
   {
     id: "fullstack",
-    position: [-4, 0.9, -1],
+    position: [-4, 0, -1],
     accent: "#63f5e7",
     title: "Full-Stack Web Applications",
     service: "Full-Stack Web Development",
@@ -65,7 +66,7 @@ const STATIONS: Station[] = [
   },
   {
     id: "frontend",
-    position: [-1.4, 0.9, -1.5],
+    position: [-1.4, 0, -1.5],
     accent: "#8fd8ff",
     title: "Frontend Development",
     service: "Full-Stack Web Development",
@@ -81,7 +82,7 @@ const STATIONS: Station[] = [
   },
   {
     id: "backend",
-    position: [1.4, 0.9, -1.5],
+    position: [1.4, 0, -1.5],
     accent: "#6bffd0",
     title: "Backend APIs & Databases",
     service: "Full-Stack Web Development",
@@ -97,7 +98,7 @@ const STATIONS: Station[] = [
   },
   {
     id: "ecommerce",
-    position: [4, 0.9, -1],
+    position: [4, 0, -1],
     accent: "#b39dff",
     title: "E-commerce Development",
     service: "E-commerce Growth Solutions",
@@ -113,7 +114,7 @@ const STATIONS: Station[] = [
   },
   {
     id: "analytics",
-    position: [0, 0.9, 1.5],
+    position: [0, 0, 1.5],
     accent: "#ffd36b",
     title: "Analytics & Tracking Integrations",
     service: "Server-Side Tracking & Conversion API",
@@ -129,16 +130,18 @@ const STATIONS: Station[] = [
   },
 ];
 
-/** A futuristic workbench / station. */
+/** A futuristic workbench / station with its interactive hotspot. */
 function ForgeStation({
   station,
-  active,
+  discuss,
 }: {
   station: Station;
-  active: boolean;
+  discuss: (service: string) => void;
 }) {
   const glowRef = useRef<THREE.Group>(null);
   const palette = useSceneTheme();
+  // Hover is a ref so crossing stations never re-renders the scene tree.
+  const hoveredRef = useRef(false);
   // Crisp silhouette rim on the core gem: luminous but sharply contained —
   // no point-light cloud, no blown-out emissive blob.
   const coreGlow = useMemo(
@@ -157,7 +160,7 @@ function ForgeStation({
   const activeMix = useRef(0);
   useFrame(({ clock }, delta) => {
     const t = clock.elapsedTime;
-    const target = active ? 1 : 0;
+    const target = hoveredRef.current ? 1 : 0;
     activeMix.current = glowDamp(activeMix.current, target, delta, 10);
     const mix = activeMix.current;
     coreGlow.setGlow(
@@ -165,6 +168,7 @@ function ForgeStation({
       (0.6 + mix * 0.35) * palette.glow,
     );
     if (glowRef.current) glowRef.current.rotation.y = t * 0.4;
+    if (Math.abs(target - mix) > 1e-3) requestWorldFrame();
   });
 
   return (
@@ -192,6 +196,31 @@ function ForgeStation({
           <octahedronGeometry args={[0.28, 0]} />
         </mesh>
       </group>
+      <Hotspot3D
+        position={[0, 1.4, 0]}
+        radius={0.7}
+        accent={station.accent}
+        onHoverChange={(hovered) => {
+          hoveredRef.current = hovered;
+        }}
+        object={{
+          id: station.id,
+          eyebrow: "SERVICE STATION",
+          title: station.title,
+          body: station.problem,
+          bullets: station.deliverables,
+          actions: [
+            {
+              label: "Discuss this project",
+              onClick: () => discuss(station.service),
+            },
+            {
+              label: "See all services",
+              onClick: () => worldActions.openCodex("services"),
+            },
+          ],
+        }}
+      />
     </group>
   );
 }
@@ -241,11 +270,16 @@ export function ForgeScene() {
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the forge */}
-        <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
+        <TempleEntrance position={[0, 0, 12]} accent={ACCENT} open={doorway.open} snap={doorway.snapped} onOpened={doorway.opened} />
 
         {/* Forge floor */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[9, 48]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
+        </mesh>
+        {/* Walkway bridging the floor disc to the entrance threshold */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 11.2]} receiveShadow>
+          <planeGeometry args={[4.2, 5.6]} />
           <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Central forge pit glow */}
@@ -259,31 +293,7 @@ export function ForgeScene() {
         <EmberField count={46} color="#ffb46a" radius={0.95} height={3.4} size={3.6} speed={0.42} />
 
         {STATIONS.map((station) => (
-          <group key={station.id}>
-            <ForgeStation station={station} active={false} />
-            <Hotspot3D
-              position={[station.position[0], 1.4, station.position[2]]}
-              radius={0.7}
-              accent={station.accent}
-              object={{
-                id: station.id,
-                eyebrow: "SERVICE STATION",
-                title: station.title,
-                body: station.problem,
-                bullets: station.deliverables,
-                actions: [
-                  {
-                    label: "Discuss this project",
-                    onClick: () => discuss(station.service),
-                  },
-                  {
-                    label: "See all services",
-                    onClick: () => worldActions.openCodex("services"),
-                  },
-                ],
-              }}
-            />
-          </group>
+          <ForgeStation key={station.id} station={station} discuss={discuss} />
         ))}
       </SceneCanvas>
 
@@ -310,14 +320,22 @@ export function ForgeScene() {
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-          {(["overview", "stations", "left", "right"] as const).map((p) => (
+          {([
+            ["overview", "Overview"],
+            ["stations", "Stations"],
+            ["left", "Left wing"],
+            ["right", "Right wing"],
+          ] as const).map(([id, label]) => (
             <button
-              key={p}
+              key={id}
               type="button"
-              onClick={() => setPose(p)}
-              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+              aria-pressed={pose === id}
+              onClick={() => setPose(id)}
+              className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] uppercase transition ${
+                pose === id ? "text-accent" : "text-dim hover:text-accent"
+              }`}
             >
-              {p}
+              {label}
             </button>
           ))}
           <button

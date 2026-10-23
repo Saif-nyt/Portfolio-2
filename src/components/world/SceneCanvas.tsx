@@ -102,7 +102,8 @@ export function SceneCanvas({
   animate = true,
   interactive = true,
 }: SceneCanvasProps) {
-  const { quality, activeObject, mapOpen, codex, worldEntry, walkMode } = useWorldState();
+  const { quality, activeObject, mapOpen, codex, collectionOpen, worldEntry, walkMode } =
+    useWorldState();
   const isMobile = useIsMobile();
   const reduced = usePrefersReducedMotion();
   const webglOk = useMemo(() => hasWebGL(), []);
@@ -171,9 +172,9 @@ export function SceneCanvas({
       : [0.8, 1.05];
   // Idle loops (flora, rings, particles) run only when motion is welcome and
   // nothing is covering the scene; a hidden tab, an offscreen cached route,
-  // reduced-motion preference, open panel/map, or open codex all drop to
+  // reduced-motion preference, open panel/map/codex/collection all drop to
   // on-demand frames.
-  const covered = Boolean(activeObject) || mapOpen || codex !== null;
+  const covered = Boolean(activeObject) || mapOpen || codex !== null || collectionOpen;
   // A gate entry must always get frames, even under reduced motion, so the
   // clearance event and the (snapped) handoff can complete instead of
   // stranding the visitor outside a half-open door.

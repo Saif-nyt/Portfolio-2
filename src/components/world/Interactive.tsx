@@ -66,7 +66,11 @@ export function Hotspot3D({
   const palette = useSceneTheme();
   const shadowTex = useMemo(() => getDotTexture(), []);
   // Stable per-instance phase so a row of hotspots breathes out of sync.
-  const phase = useMemo(() => position[0] * 1.7 + position[2] * 0.9, [position]);
+  // Keyed on the coordinate values (not the array identity) so callers can
+  // pass inline `[x, y, z]` literals without retriggering the memo each render.
+  const phaseX = position[0];
+  const phaseZ = position[2];
+  const phase = useMemo(() => phaseX * 1.7 + phaseZ * 0.9, [phaseX, phaseZ]);
   const orbAccent = palette.accent(accent);
 
   const ringGlow = useMemo(
@@ -130,6 +134,15 @@ export function Hotspot3D({
     [ringGlow, crystalGlow, coreGlow],
   );
   useEffect(() => () => ring2Mat.dispose(), [ring2Mat]);
+
+  // Leaving the scene while a hotspot is hovered never delivers pointerout —
+  // clear the cursor on unmount so the next page isn't stuck with it.
+  useEffect(
+    () => () => {
+      if (document.body.style.cursor === "pointer") document.body.style.cursor = "";
+    },
+    [],
+  );
 
   useFrame(({ clock }, delta) => {
     if (!showIndicator) return;
@@ -318,6 +331,7 @@ export function CameraDirector({
   allowSteering = true,
   suspended = false,
   baseFov = 44,
+  yawLimit,
   onPoseComplete,
 }: {
   pose: string;
@@ -328,6 +342,12 @@ export function CameraDirector({
   suspended?: boolean;
   /** Authored vertical FOV for this scene — drives the entrance pull-back. */
   baseFov?: number;
+  /**
+   * Clamp total steering yaw (radians) around the pose's authored heading.
+   * Interior rooms pass a limit so an orbit can never swing the camera
+   * through a wall; open landscapes leave it unset for a full 360°.
+   */
+  yawLimit?: number;
   onPoseComplete?: (pose: string) => void;
 }) {
   const { camera, size } = useThree();
@@ -369,8 +389,12 @@ export function CameraDirector({
     const ease = 1 - Math.exp(-INPUT_EASE * dt);
     s.ix += ((allowSteering ? input.x : 0) - s.ix) * ease;
     s.iy += ((allowSteering ? input.y : 0) - s.iy) * ease;
-    // Horizontal drag orbits a full, unclamped 360°; vertical drag pitches.
+    // Horizontal drag orbits the view; interior poses clamp it with `yawLimit`
+    // so the camera can never orbit through a wall. Vertical drag pitches.
     s.yaw += s.ix * YAW_SPEED * dt;
+    if (yawLimit !== undefined) {
+      s.yaw = THREE.MathUtils.clamp(s.yaw, -yawLimit, yawLimit);
+    }
     s.pitch += s.iy * PITCH_SPEED * dt;
 
     // Rebuild the pose's offset in spherical coordinates around its look-at

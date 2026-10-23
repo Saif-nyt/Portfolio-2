@@ -27,6 +27,8 @@ export interface TempleEntranceProps {
   rotationY?: number;
   accent?: string;
   open: boolean;
+  /** Skip/watchdog recovery: snap both leaves fully open in one frame. */
+  snap?: boolean;
   /** Clear opening width. */
   width?: number;
   /** Clear opening height. */
@@ -46,6 +48,7 @@ export function TempleEntrance({
   rotationY = 0,
   accent = "#8fd8ff",
   open,
+  snap = false,
   width = 2.2,
   height = 3.4,
   scale = 1,
@@ -72,7 +75,7 @@ export function TempleEntrance({
   }, [onOpened]);
   useEffect(() => {
     requestWorldFrame();
-  }, [open]);
+  }, [open, snap]);
   const pediment = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-halfW - 1.05, 0);
@@ -83,6 +86,7 @@ export function TempleEntrance({
   }, [halfW]);
 
   useFrame((_, delta) => {
+    const instant = reduced || snap;
     const spring = springRef.current;
     if (spring.open !== open) {
       spring.open = open;
@@ -90,8 +94,11 @@ export function TempleEntrance({
     }
 
     const openingAngle = Math.PI * 0.43;
+    // The right leaf starts on a short delay so the pair never snaps in unison.
+    // Reduced motion / skip snap skips the delay entirely.
+    const rightStarted = open && (instant || spring.elapsed > 0.28);
     const leftTarget = open ? openingAngle : 0;
-    const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
+    const rightTarget = rightStarted ? -openingAngle : 0;
     const sealTarget = open ? 0 : 0.72;
     const left = leftRef.current;
     const right = rightRef.current;
@@ -99,7 +106,11 @@ export function TempleEntrance({
 
     // Doors at rest should cost nothing per frame (the demand loop already
     // sleeps when idle; this also keeps always-on walk mode nearly free).
+    // The delayed right leaf must block rest: otherwise the demand loop falls
+    // asleep between the two leaves and the right one never opens at all.
+    const rightPending = open && !instant && spring.elapsed < 0.28;
     const atRest =
+      !rightPending &&
       left &&
       right &&
       Math.abs(left.rotation.y - leftTarget) < 0.0015 &&
@@ -116,7 +127,7 @@ export function TempleEntrance({
       dt: number,
     ) => {
       if (!hinge) return;
-      if (reduced) {
+      if (instant) {
         hinge.rotation.y = target;
         spring[velocity] = 0;
         return;
@@ -146,14 +157,14 @@ export function TempleEntrance({
         updateHinge(leftRef.current, "leftVelocity", open ? openingAngle : 0, step);
       }
       if (rightRef.current) {
-        const rightTarget = open && spring.elapsed > 0.28 ? -openingAngle : 0;
+        const rightTarget = open && (instant || spring.elapsed > 0.28) ? -openingAngle : 0;
         updateHinge(rightRef.current, "rightVelocity", rightTarget, step);
       }
     }
 
     if (sealRef.current) {
       const opacity = open ? 0 : 0.72;
-      sealRef.current.opacity = reduced
+      sealRef.current.opacity = instant
         ? opacity
         : THREE.MathUtils.damp(sealRef.current.opacity, opacity, 1.7, Math.min(delta, 0.25));
     }

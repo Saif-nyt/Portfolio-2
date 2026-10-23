@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { hash01 } from "@/lib/world/anim";
@@ -217,6 +217,9 @@ export function EmberField({
     geo.setAttribute("aPhase", new THREE.Float32BufferAttribute(phase, 1));
     return geo;
   }, [total, radius, speed]);
+  // Imperative geometry is not auto-disposed by R3F; also covers the quality
+  // tier flip that rebuilds the buffer with a different particle count.
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   const uniforms = useMemo(
     () => ({

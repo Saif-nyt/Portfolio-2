@@ -22,7 +22,8 @@ export function EntrancePrompt({
   /** Optional escape hatch: don't make anyone watch the full swing. */
   onSkip?: () => void;
 }) {
-  if (open) return null;
+  // Note: `opening` implies `open` (phase !== "outside"), so the wait state
+  // must be checked first — otherwise it would be unreachable dead code.
   if (opening) {
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-col items-center gap-2 px-6 text-center sm:bottom-28">
@@ -41,6 +42,7 @@ export function EntrancePrompt({
       </div>
     );
   }
+  if (open) return null;
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-28 sm:pb-24">
       <button type="button" onClick={onEnter} className="btn-primary pointer-events-auto">

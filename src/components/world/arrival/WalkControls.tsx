@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Compass, MousePointer2, X } from "lucide-react";
 import { useIsMobile } from "@/lib/hooks";
 import { resetWalkInput, setWalkInput } from "@/lib/world/store";
@@ -16,36 +16,84 @@ function requestWorldPointerLock() {
   canvas?.requestPointerLock();
 }
 
-/** Left-thumb virtual joystick. Writes straight to the mutable walk store. */
+/**
+ * Left-thumb virtual joystick.
+ * The base stays anchored at the bottom-left; the inner stick (knob) tracks
+ * displacement up to the boundary limit and smoothly springs back to dead
+ * center upon release, preventing it from getting stuck in any corner.
+ */
 export function WalkJoystick({ visible }: { visible: boolean }) {
-  const isMobile = useIsMobile();
   const pointerId = useRef<number | null>(null);
   const baseRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
+
+  const end = useCallback(() => {
+    pointerId.current = null;
+    resetWalkInput();
+    const knob = knobRef.current;
+    if (knob) {
+      knob.style.transition = "transform 0.18s cubic-bezier(0.16, 1, 0.3, 1)";
+      knob.style.transform = "translate3d(0px, 0px, 0)";
+    }
+  }, []);
 
   const update = useCallback((clientX: number, clientY: number) => {
     const base = baseRef.current;
     const knob = knobRef.current;
     if (!base || !knob) return;
+
     const rect = base.getBoundingClientRect();
-    const radius = rect.width / 2;
-    const dx = clientX - (rect.left + radius);
-    const dy = clientY - (rect.top + radius);
-    const limit = radius - 20;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    const limit = 34;
     const distance = Math.hypot(dx, dy);
+
     const nx = distance > limit ? (dx / distance) * limit : dx;
     const ny = distance > limit ? (dy / distance) * limit : dy;
-    knob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+
+    knob.style.transition = "";
+    knob.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
+
     setWalkInput(nx / limit, -ny / limit);
   }, []);
 
-  const end = useCallback(() => {
-    pointerId.current = null;
-    resetWalkInput();
-    if (knobRef.current) knobRef.current.style.transform = "translate(-50%, -50%)";
-  }, []);
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      if (pointerId.current === event.pointerId) {
+        update(event.clientX, event.clientY);
+      }
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (pointerId.current === event.pointerId) {
+        end();
+      }
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (pointerId.current === event.pointerId) {
+        end();
+      }
+    };
+    const onBlur = () => {
+      end();
+    };
 
-  if (!visible || !isMobile) return null;
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
+    window.addEventListener("blur", onBlur);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
+      window.removeEventListener("blur", onBlur);
+      resetWalkInput();
+    };
+  }, [update, end]);
+
+  if (!visible) return null;
 
   return (
     <div
@@ -58,11 +106,15 @@ export function WalkJoystick({ visible }: { visible: boolean }) {
           event.preventDefault();
           event.stopPropagation();
           pointerId.current = event.pointerId;
-          event.currentTarget.setPointerCapture(event.pointerId);
+          const knob = knobRef.current;
+          if (knob) knob.style.transition = "";
+
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // Safari / WebKit safe fallback
+          }
           update(event.clientX, event.clientY);
-        }}
-        onPointerMove={(event) => {
-          if (pointerId.current === event.pointerId) update(event.clientX, event.clientY);
         }}
         onPointerUp={(event) => {
           if (pointerId.current === event.pointerId) end();
@@ -71,16 +123,19 @@ export function WalkJoystick({ visible }: { visible: boolean }) {
         onLostPointerCapture={end}
         aria-label="Walk joystick"
         role="application"
-        className="relative h-full w-full rounded-full border border-line bg-[var(--veil)]/80 backdrop-blur-md"
+        className="relative h-full w-full rounded-full border border-line bg-[var(--veil)]/85 backdrop-blur-md"
       >
-        <span className="pointer-events-none absolute inset-4 rounded-full border border-line/60" />
-        <span className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 font-mono text-[0.45rem] tracking-[0.18em] text-faint uppercase">
+        <span className="pointer-events-none absolute inset-3 rounded-full border border-line/50" />
+        <span className="pointer-events-none absolute left-1/2 top-2.5 -translate-x-1/2 font-mono text-[0.45rem] tracking-[0.18em] text-faint uppercase">
           Move
         </span>
         <div
           ref={knobRef}
-          style={{ boxShadow: "0 0 22px color-mix(in srgb, var(--accent) 28%, transparent)" }}
-          className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent/40 bg-accent/15"
+          style={{
+            transform: "translate3d(0px, 0px, 0)",
+            boxShadow: "0 0 22px color-mix(in srgb, var(--accent) 35%, transparent)",
+          }}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -ml-[22px] -mt-[22px] rounded-full border border-accent/50 bg-accent/20"
         />
       </div>
     </div>

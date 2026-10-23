@@ -24,19 +24,41 @@ export function WorldMapOverlay({
   onNavigate,
   accent = "#63f5e7",
 }: WorldMapOverlayProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    restoreRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
         worldActions.toggleMap(false);
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      restoreRef.current?.focus();
+    };
   }, [open]);
 
   return (
@@ -51,9 +73,13 @@ export function WorldMapOverlay({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-[var(--veil)] p-4 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) worldActions.toggleMap(false);
+          }}
         >
           <motion.div
+            ref={panelRef}
             initial={{ scale: 0.94, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: 10 }}
@@ -105,6 +131,14 @@ export function WorldMapOverlay({
 
               {LOCATIONS.map((location) => {
                 const isCurrent = location.id === currentId;
+                // Clamp edge labels so nodes near the chart border (Nexus at
+                // 0.94, Arrival at 0.10) don't get clipped by overflow-hidden.
+                const labelPosition =
+                  location.mapX > 0.8
+                    ? "right-0 translate-x-0"
+                    : location.mapX < 0.15
+                      ? "left-0 translate-x-0"
+                      : "left-1/2 -translate-x-1/2";
                 return (
                   <button
                     key={location.id}
@@ -112,7 +146,7 @@ export function WorldMapOverlay({
                     onClick={() => onNavigate(location.id)}
                     aria-current={isCurrent ? "page" : undefined}
                     aria-label={`${location.title} — ${location.subtitle}`}
-                    className="group absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full focus-visible:outline-none"
+                    className="group absolute grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
                     style={{ left: `${location.mapX * 100}%`, top: `${location.mapY * 100}%` }}
                   >
                     <span
@@ -124,7 +158,9 @@ export function WorldMapOverlay({
                         boxShadow: isCurrent ? `0 0 14px ${location.accent}` : `0 0 8px ${location.accent}55`,
                       }}
                     />
-                    <span className="pointer-events-none absolute left-1/2 top-full hidden w-max -translate-x-1/2 rounded-md bg-bgdeep/90 px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-ink uppercase transition group-hover:opacity-100 group-focus-visible:opacity-100 sm:block sm:opacity-0">
+                    <span
+                      className={`pointer-events-none absolute top-full hidden w-max rounded-md bg-bgdeep/90 px-2 py-1 font-mono text-[0.55rem] tracking-[0.14em] text-ink uppercase transition group-hover:opacity-100 group-focus-visible:opacity-100 sm:block sm:opacity-0 ${labelPosition}`}
+                    >
                       {location.number} · {location.title}
                     </span>
                   </button>

@@ -119,15 +119,20 @@ export function NexusScene() {
         <LightRig fillColor={ACCENT} intensity={0.78} />
         <CameraDirector pose={inside ? (pose as string) : "entrance"} poses={POSES} baseFov={44} />
         <DistantHorizon accent={ACCENT} scale={1.1} />
-        <AmbientMotes color={palette.mote} radius={6.5} height={4.5} count={80} />
+        <AmbientMotes color={palette.mote} radius={6.5} height={4.5} count={80} size={0.12} />
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* The temple entrance into the nexus */}
-        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} onOpened={doorway.opened} />
+        <TempleEntrance position={[0, 0, 11]} accent={ACCENT} open={doorway.open} snap={doorway.snapped} onOpened={doorway.opened} />
 
         {/* Platform */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[7, 48]} />
+          <meshStandardMaterial color={palette.floor} roughness={0.95} />
+        </mesh>
+        {/* Walkway bridging the platform to the entrance threshold */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 9.8]} receiveShadow>
+          <planeGeometry args={[3.8, 5.6]} />
           <meshStandardMaterial color={palette.floor} roughness={0.95} />
         </mesh>
         {/* Edge glow ring — overlooks the planet */}
@@ -150,7 +155,7 @@ export function NexusScene() {
             body: "Tell me what you're building, what you want to improve, or where you're looking to grow. I'll reply with an honest read on scope and the smartest place to start.",
             actions: [
               { label: "Open contact form", onClick: () => worldActions.openCodex("contact") },
-              { label: "See direct channels", onClick: () => worldActions.openCodex("contact") },
+              { label: "Jump to the WhatsApp beacon", onClick: () => setPose("beacon") },
             ],
           }}
         />
@@ -186,7 +191,7 @@ export function NexusScene() {
             id: "email-terminal",
             eyebrow: "EMAIL TERMINAL",
             title: "Send an email",
-            body: `Best for briefs, links and anything worth a considered reply. I usually respond within one business day.`,
+            body: "Best for briefs, links and anything worth a considered reply. I usually respond within one business day.",
             actions: [
               {
                 label: `Email ${SITE.email}`,
@@ -198,7 +203,7 @@ export function NexusScene() {
       </SceneCanvas>
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-32 z-20 flex flex-col items-center px-6 text-center sm:top-36">
         <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           COMMUNICATION NEXUS · CONTACT
         </p>
@@ -220,14 +225,22 @@ export function NexusScene() {
 
       {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap justify-center gap-2 px-4 sm:bottom-28">
-          {(["overview", "terminal", "beacon", "email"] as const).map((p) => (
+          {([
+            ["overview", "Overview"],
+            ["terminal", "Project terminal"],
+            ["beacon", "WhatsApp beacon"],
+            ["email", "Email terminal"],
+          ] as const).map(([id, label]) => (
             <button
-              key={p}
+              key={id}
               type="button"
-              onClick={() => setPose(p)}
-              className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] text-dim uppercase transition hover:text-accent"
+              aria-pressed={pose === id}
+              onClick={() => setPose(id)}
+              className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.56rem] tracking-[0.16em] uppercase transition ${
+                pose === id ? "text-accent" : "text-dim hover:text-accent"
+              }`}
             >
-              {p}
+              {label}
             </button>
           ))}
           <button

@@ -364,6 +364,7 @@ export function ArrivalScene() {
           position={[0, 0, 17]}
           accent={ACCENT}
           open={worldEntry !== "outside"}
+          snap={skipRequested}
           width={6.2}
           height={6.8}
           scale={1.2}

@@ -2,12 +2,12 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SceneCanvas } from "@/components/world/SceneCanvas";
 import { SceneScope } from "@/components/world/SceneScope";
 import { DistantHorizon } from "@/components/world/DistantHorizon";
 import { AmbientMotes } from "@/components/world/AmbientMotes";
 import { BioluminescentGrowth } from "@/components/world/BioluminescentGrowth";
+import { EntrancePrompt } from "@/components/world/EntrancePrompt";
 import { CameraDirector, Hotspot3D, LightRig, type CameraPose } from "@/components/world/Interactive";
 import {
   CarvedReliefs,
@@ -33,6 +33,8 @@ const GROWTH_POSITIONS: Array<[number, number]> = [
   [-5, -6],
   [5, -6],
 ];
+// Stable identity so Rubble's layout effect doesn't re-run on every render.
+const RUBBLE_ORIGIN: [number, number, number] = [0, 0, 2];
 
 const POSES: Record<string, CameraPose> = {
   // Looking at the closed doorway from outside.
@@ -53,7 +55,6 @@ const POSES: Record<string, CameraPose> = {
  * Identity Crystal, Journey Archive, Builder's Philosophy, Exit Portal.
  */
 export function TempleScene() {
-  const router = useRouter();
   const reduced = usePrefersReducedMotion();
   const palette = useSceneTheme({ bg: "#e1dccb", fog: "#e9e4d4" });
   // The camera pose is *derived* from the doorway state rather than chained
@@ -92,6 +93,9 @@ export function TempleScene() {
           poses={POSES}
           reduced={reduced}
           allowSteering={inside}
+          // The chamber is a closed room — clamp the orbit so steering can
+          // never swing the camera through the back or side walls.
+          yawLimit={inside ? 1.15 : undefined}
           baseFov={44}
         />
         <DistantHorizon accent={ACCENT} scale={1.15} />
@@ -99,15 +103,16 @@ export function TempleScene() {
         <BioluminescentGrowth accent={ACCENT} positions={GROWTH_POSITIONS} />
 
         {/* Interior fill — lifts the chamber just enough to read the stone,
-            the alcoves and the dais without losing the ancient mood. */}
-        <ambientLight intensity={palette.ambientIntensity * 0.9} color={palette.ambient} />
+            the alcoves and the dais without losing the ancient mood. The
+            LightRig already provides ambient + hemisphere; this is only the
+            depth-adding point source. */}
         <pointLight position={[0, 3.9, -2]} intensity={12} distance={24} decay={2} color={palette.key} />
 
         <TempleFloor width={14} depth={16} />
         <TempleWalls />
         <CarvedReliefs />
         <TempleSteps />
-        <Rubble origin={[0, 0, 3]} count={14} spread={5} />
+        <Rubble origin={RUBBLE_ORIGIN} count={14} spread={3.5} />
 
         {/* Exterior pillars flanking the approach path */}
         <Pillar position={[-2.6, 0, 7]} height={3.4} accent={ACCENT} variant={1} />
@@ -115,12 +120,13 @@ export function TempleScene() {
         <Pillar position={[-3.4, 0, 4]} height={3} accent={ACCENT} variant={3} />
         <Pillar position={[3.4, 0, 4]} height={3} accent={ACCENT} variant={4} />
 
-        {/* Interior pillars */}
-        <Pillar position={[-4, 0, -3]} height={3.6} accent={ACCENT} variant={5} />
-        <Pillar position={[4, 0, -3]} height={3.6} accent={ACCENT} variant={6} />
+        {/* Interior pillars — set outboard of the alcove artifacts so the
+            rings and crystals never clip through the shafts */}
+        <Pillar position={[-5.4, 0, -4.2]} height={3.6} accent={ACCENT} variant={5} />
+        <Pillar position={[5.4, 0, -4.2]} height={3.6} accent={ACCENT} variant={6} />
 
         {/* The great doorway — the temple's entrance */}
-        <TempleDoor open={doorway.open} accent={ACCENT} onOpened={doorway.opened} />
+        <TempleDoor open={doorway.open} snap={doorway.snapped} accent={ACCENT} onOpened={doorway.opened} />
         <pointLight position={[0, 2, 1.2]} intensity={palette.isLight ? 3 : 6} distance={9} decay={2} color={ACCENT} />
 
         {/* ---------- Interactive objects (interior) ---------- */}
@@ -217,7 +223,7 @@ export function TempleScene() {
       </SceneCanvas>
 
       {/* ---------- HUD ---------- */}
-      <div className="pointer-events-none absolute inset-x-0 top-28 z-20 flex flex-col items-center px-6 text-center sm:top-32">
+      <div className="pointer-events-none absolute inset-x-0 top-32 z-20 flex flex-col items-center px-6 text-center sm:top-36">
         <p className="font-mono text-[0.6rem] tracking-[0.28em]" style={{ color: "var(--loc-accent-text)" }}>
           ANCIENT TEMPLE · ABOUT
         </p>
@@ -231,44 +237,52 @@ export function TempleScene() {
       </div>
 
       {/* ---------- DOM interaction layer ---------- */}
-      {!inside && !doorway.open ? (
-        <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-center pb-28 sm:pb-24">
-          <button type="button" onClick={enterTemple} className="btn-primary pointer-events-auto">
-            Enter the Temple
-          </button>
-        </div>
-      ) : inside ? (
+      <EntrancePrompt
+        label="the Temple"
+        open={doorway.open}
+        opening={doorway.opening}
+        onEnter={enterTemple}
+        onSkip={doorway.skip}
+      />
+
+      {inside ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-wrap items-center justify-center gap-2 px-4 sm:bottom-28">
           <button
             type="button"
+            aria-pressed={pose === "interior"}
             onClick={() => setPose("interior")}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] uppercase transition ${
+              pose === "interior" ? "text-accent" : "text-dim hover:text-accent"
+            }`}
           >
             Center
           </button>
           <button
             type="button"
+            aria-pressed={pose === "journey"}
             onClick={() => setPose("journey")}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] uppercase transition ${
+              pose === "journey" ? "text-accent" : "text-dim hover:text-accent"
+            }`}
           >
             Journey →
           </button>
           <button
             type="button"
+            aria-pressed={pose === "philosophy"}
             onClick={() => setPose("philosophy")}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
+            className={`panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] uppercase transition ${
+              pose === "philosophy" ? "text-accent" : "text-dim hover:text-accent"
+            }`}
           >
             ← Philosophy
           </button>
           <button
             type="button"
-            onClick={() => {
-              exitTemple();
-              router.push("/");
-            }}
+            onClick={exitTemple}
             className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-ink uppercase transition hover:text-accent"
           >
-            Exit temple
+            Step outside
           </button>
           <Link
             href="/"
@@ -277,20 +291,7 @@ export function TempleScene() {
             Arrival Valley
           </Link>
         </div>
-      ) : (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-20 flex flex-col items-center gap-2 text-center sm:bottom-28">
-          <div role="status" className="font-mono text-xs tracking-[0.2em] text-ink uppercase">
-            Entering the temple…
-          </div>
-          <button
-            type="button"
-            onClick={doorway.skip}
-            className="panel pointer-events-auto min-h-11 rounded-full px-4 py-2 font-mono text-[0.58rem] tracking-[0.18em] text-dim uppercase transition hover:text-accent"
-          >
-            Skip wait
-          </button>
-        </div>
-      )}
+      ) : null}
     </SceneScope>
   );
 }

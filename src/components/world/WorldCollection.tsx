@@ -28,6 +28,7 @@ import {
 import { LOCATIONS } from "@/lib/world/registry";
 import { isSoundEnabled, playBlip, setSoundEnabled } from "@/lib/sound";
 import { worldActions } from "@/lib/world/store";
+import { withVars } from "@/lib/styles";
 
 interface WorldCollectionProps {
   open: boolean;
@@ -127,7 +128,9 @@ function ArtifactCard({ artifact }: { artifact: Artifact }) {
  * from every location.
  */
 export function WorldCollection({ open, accent = "#63f5e7" }: WorldCollectionProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
   const progress = useProgress();
   const { data: projects, status } = useProjectsResource();
 
@@ -143,15 +146,35 @@ export function WorldCollection({ open, accent = "#63f5e7" }: WorldCollectionPro
 
   useEffect(() => {
     if (!open) return;
+    restoreRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
         worldActions.toggleCollection(false);
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"]), summary',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      restoreRef.current?.focus();
+    };
   }, [open]);
 
   const level = levelFromXp(progress.xp);
@@ -174,21 +197,25 @@ export function WorldCollection({ open, accent = "#63f5e7" }: WorldCollectionPro
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[84] flex items-start justify-center overflow-y-auto bg-black/65 p-4 pt-[5.5rem] backdrop-blur-sm sm:pt-24"
+          className="fixed inset-0 z-[84] flex items-start justify-center overflow-y-auto bg-[var(--veil)] p-4 pt-[5.5rem] backdrop-blur-sm sm:pt-24"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) worldActions.toggleCollection(false);
+          }}
         >
           <motion.div
+            ref={panelRef}
             initial={{ scale: 0.96, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.97, y: 10 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="panel relative w-full max-w-3xl rounded-3xl p-5 sm:p-7"
-            style={{ borderColor: `${accent}44` }}
+            className="panel world-scope relative w-full max-w-3xl rounded-3xl p-5 sm:p-7"
+            style={withVars({ borderColor: `${accent}44` }, { "--loc-accent": accent })}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p
                   className="font-mono text-[0.6rem] tracking-[0.26em] uppercase"
-                  style={{ color: accent }}
+                  style={{ color: "var(--loc-accent-text)" }}
                 >
                   EXPLORER LOG · COLLECTION
                 </p>

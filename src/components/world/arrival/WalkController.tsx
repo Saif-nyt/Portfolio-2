@@ -81,6 +81,7 @@ export function WalkController({ active, quality, reduced }: WalkControllerProps
   const { camera } = useThree();
   const { activeObject, mapOpen, codex, collectionOpen } = useWorldState();
   const blocked = Boolean(activeObject) || mapOpen || codex !== null || collectionOpen;
+  const blockedRef = useRef(blocked);
   const colliders = useMemo(() => homeColliders(quality), [quality]);
 
   const activeRef = useRef(false);
@@ -93,12 +94,18 @@ export function WalkController({ active, quality, reduced }: WalkControllerProps
   const bobPhase = useRef(0);
   const bobAmount = useRef(0);
 
+  useEffect(() => {
+    blockedRef.current = blocked;
+  }, [blocked]);
+
   // Keyboard is captured only while walking, so it never steals typing from
-  // form fields elsewhere on the page.
+  // form fields elsewhere on the page. While an overlay is open the keys are
+  // left alone entirely, so arrow keys can scroll the panel content.
   useEffect(() => {
     if (!active) return;
     const pressed = keys.current;
     const onKeyDown = (event: KeyboardEvent) => {
+      if (blockedRef.current) return;
       const key = event.key.toLowerCase();
       if (!MOVEMENT_KEYS.has(key)) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
